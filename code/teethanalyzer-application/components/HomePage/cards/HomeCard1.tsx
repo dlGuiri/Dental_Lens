@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import logo from "/public/assets/Tooth Image V3.png";
 import arrow from "/public/assets/scan arrow V2.png";
 import { gql, useQuery } from "@apollo/client";
 import { usePrediction } from "context/PredictionContext";
 
-const GET_USER_BY_ID = gql`
-  query GetUserById($userId: ID!) {
-    getUserById(userId: $userId) {
+const GET_USER_BY_OAUTH_ID = gql`
+  query GetUserByOauthId($oauthId: String!) {
+    getUserByOauthId(oauthId: $oauthId) {
       name
       teeth_status
       scanRecords {
@@ -20,34 +21,38 @@ const GET_USER_BY_ID = gql`
 `;
 
 
-const HomeCard1 = ({ className = "", metric = 100, userId }: { className?: string; metric?: number; userId: string }) => {
+const HomeCard1 = ({ className = "", metric = 100 }: { className?: string; metric?: number }) => {
+  const { data: session } = useSession();
+  const oauthId = session?.user?.oauthId;
+
   const { predictionResult } = usePrediction();
-  const { data, loading, error, refetch } = useQuery(GET_USER_BY_ID, {
-    variables: { userId },
+  const { data, loading, error, refetch } = useQuery(GET_USER_BY_OAUTH_ID, {
+    variables: { oauthId },
+    skip: !oauthId, // Skip the query if no session yet
   });
 
   useEffect(() => {
-    if (predictionResult) {
+    if (predictionResult && oauthId) {
       refetch();
     }
-  }, [predictionResult]);
+  }, [predictionResult, oauthId]);
 
   type ScanRecord = {
     date: string;
     result: string[] | string;
     notes: string;
   };
-
-  const name = data?.getUserById?.name || "User";
+  
+  const name = session?.user?.name || "User";
   const teethStatus = data?.getUserById?.teeth_status || "No Teeth Status Yet";
-  const scanRecords = Array.isArray(data?.getUserById?.scanRecords) ? data.getUserById.scanRecords : [];
+  const scanRecords = Array.isArray(data?.getUserByOauthId?.scanRecords) ? data.getUserByOauthId.scanRecords : [];
 
-  let displayResultRaw = predictionResult ?? scanRecords[scanRecords.length - 1]?.result;
+  let displayResultRaw = predictionResult && predictionResult !== "" && predictionResult !== "Invalid image: Please upload a clear image of an actual teeth." ? predictionResult : scanRecords[scanRecords.length - 1]?.result;
   let displayResult = Array.isArray(displayResultRaw) ? displayResultRaw.join(", ") : String(displayResultRaw ?? "");
   let recommendedAction = "Go to a dentist";
   const [showHistory, setShowHistory] = useState(false);
 
-  if (displayResult?.toLowerCase() === "healthy") {
+  if (displayResult?.toLowerCase() === "no diseases detected") {
     displayResult = "None";
     recommendedAction = "Continue current oral hygiene!";
   }
@@ -94,7 +99,7 @@ const HomeCard1 = ({ className = "", metric = 100, userId }: { className?: strin
                 <Image src={arrow} alt="Scan Arrow" width={140} height={140} />
               </div>
 
-              {/* New: Semi-transparent card at the arrow tip */}
+              {/* Semi-transparent card at the arrow tip */}
               <div className="absolute top-[40px] left-[389px] w-80 h-55 bg-white/20 backdrop-blur-md rounded-3xl p-4 shadow-inner text-white">
                 <p className="text-sm font-medium mb-2">Latest Teeth Status:</p>
                 {scanRecords.length > 0 ? (
@@ -105,7 +110,6 @@ const HomeCard1 = ({ className = "", metric = 100, userId }: { className?: strin
                         day: "numeric",
                       })}
                     </p>
-                    {/* <p className="text-sm mb-1">Result: {scanRecords[0].result}</p> */}
                     <p className="text-sm mb-1">Result: {scanRecords.length > 0 ? scanRecords[scanRecords.length - 1].notes : "No Results yet"}</p>
                     <p className="text-sm mb-1">Diseases Present:</p>
                     <p className="text-sm mb-5">{displayResult}</p>
@@ -136,19 +140,18 @@ const HomeCard1 = ({ className = "", metric = 100, userId }: { className?: strin
                 </p>
                 <p className="text-sm mb-1">Diseases Present:</p>
                 <p className="text-sm mb-1">{Array.isArray(scanRecords[0]?.result) ? scanRecords[0].result.join(", ") : scanRecords[0]?.result}</p>
+                <div className="flex flex-col items-center">
+                  <button 
+                  className="mt-6 px-4 py-2 bg-white/30 text-white rounded-3xl hover:bg-[#608cc4]/40 transition-colors duration-200"
+                  onClick={() => setShowHistory(true)}
+                  >
+                    See History
+                  </button>
+                </div> 
               </>
             ) : (
               <p>No scans found.</p>
             )}
-
-            <div className="flex flex-col items-center">
-              <button 
-              className="mt-5 px-4 py-2 bg-white/30 text-white rounded-3xl hover:bg-[#608cc4]/40 transition-colors duration-200"
-              onClick={() => setShowHistory(true)}
-              >
-                See History
-              </button>
-            </div> 
           </div>
         </>
       ) : (
@@ -157,7 +160,7 @@ const HomeCard1 = ({ className = "", metric = 100, userId }: { className?: strin
           <h2 className="text-2xl font-semibold text-white mb-4">
             Scan History
           </h2>
-          <div className="bg-white/20 backdrop-blur-md rounded-3xl p-4 shadow-inner text-white mb-4 max-h-[308px]">
+          <div className="bg-white/20 backdrop-blur-md rounded-3xl p-4 shadow-inner text-white mb-4 max-h-[308px] min-h-[308px]">
             <p className="text-md font-medium mb-2">Past Scan Results:</p>
             <div className="max-h-64 overflow-y-auto pr-2">
               <ul className="text-md text-white/80 list-disc list-inside z-[20] ml-4">
@@ -207,7 +210,7 @@ const HomeCard1 = ({ className = "", metric = 100, userId }: { className?: strin
                 </div>
               </div>
             )}
-          <div className="flex justify-center">
+          <div className="absolute bottom-4 w-full flex justify-center">
             <button
               className="-mt-9 px-4 py-2 bg-white/30 text-white rounded-3xl hover:bg-[#608cc4]/40 transition-colors duration-200"
               onClick={() => setShowHistory(false)}

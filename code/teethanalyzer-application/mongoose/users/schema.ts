@@ -1,7 +1,5 @@
 import { Schema, InferSchemaType } from "mongoose";
 
-// IMPORT the ScanRecord model just for type-checking/ref linking
-// Only import the schema here if needed for virtuals (not in this case)
 export const UserSchema = new Schema(
   {
     oauthProvider: {

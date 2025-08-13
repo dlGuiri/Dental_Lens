@@ -7,6 +7,7 @@ import client from "lib/apolloClient";
 import { PredictionProvider } from "context/PredictionContext";
 import type { NextPage } from "next";
 import type { ReactElement, ReactNode } from "react";
+import { SessionProvider } from "next-auth/react";
 
 // Custom layout type
 type NextPageWithLayout = NextPage & {
@@ -15,14 +16,19 @@ type NextPageWithLayout = NextPage & {
 
 type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
+  pageProps: any;
 };
 
 export default function App({ Component, pageProps }: AppPropsWithLayout) {
   const getLayout = Component.getLayout ?? ((page) => <Layout>{page}</Layout>);
 
   return (
-    <ApolloProvider client={client}>
-      <PredictionProvider>{getLayout(<Component {...pageProps} />)}</PredictionProvider>
-    </ApolloProvider>
+    <SessionProvider session={pageProps.session}>
+      <ApolloProvider client={client}>
+        <PredictionProvider>
+          {getLayout(<Component {...pageProps} />)}
+        </PredictionProvider>
+      </ApolloProvider>
+    </SessionProvider>
   );
 }

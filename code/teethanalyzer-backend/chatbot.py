@@ -1,31 +1,35 @@
-# chatbot.py
 import os
+import base64
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from dotenv import load_dotenv
+from PIL import Image
+import io
 
-# Load environment variables
 load_dotenv()
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-model = "gemini-2.0-flash"
-
-def generate_response(user_prompt: str) -> str:
-    contents = [
-        types.Content(
-            role="user",
-            parts=[types.Part.from_text(text=user_prompt)],
-        ),
-    ]
-
-    config = types.GenerateContentConfig(response_mime_type="text/plain")
-    response_text = ""
-
+def stream_response(prompt: str, image_base64: str = None):
+    # Create the client instance
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    
+    # Start with the text prompt
+    contents = [prompt]
+    
+    # Add image if provided
+    if image_base64:
+        # Decode the base64 image
+        image_data = base64.b64decode(image_base64.split(",")[1])
+        
+        # Convert to PIL Image (the new SDK handles PIL Images automatically)
+        image = Image.open(io.BytesIO(image_data))
+        contents.append(image)
+    
+    # Stream the response using the new SDK
     for chunk in client.models.generate_content_stream(
-        model=model,
+        model='gemini-2.0-flash',
         contents=contents,
-        config=config,
+        config=types.GenerateContentConfig(
+            response_mime_type="text/plain"
+        )
     ):
-        response_text += chunk.text
-
-    return response_text
+        yield chunk.text
