@@ -42,7 +42,8 @@ const HomeCard1 = ({ className = "", metric = 100, userId }: { className?: strin
   const teethStatus = data?.getUserById?.teeth_status || "No Teeth Status Yet";
   const scanRecords = Array.isArray(data?.getUserById?.scanRecords) ? data.getUserById.scanRecords : [];
 
-  let displayResult = predictionResult ?? scanRecords[scanRecords.length - 1]?.result?.join(", ");
+  let displayResultRaw = predictionResult ?? scanRecords[scanRecords.length - 1]?.result;
+  let displayResult = Array.isArray(displayResultRaw) ? displayResultRaw.join(", ") : String(displayResultRaw ?? "");
   let recommendedAction = "Go to a dentist";
   const [showHistory, setShowHistory] = useState(false);
 

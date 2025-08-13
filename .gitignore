@@ -1,0 +1,36 @@
+# Virtual Environments
+**/venv/
+**/venv311/
+**/env/
+**/ENV/
+**/venv*/
+**/.venv/
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/*.so
+**/.Python
+**/build/
+**/develop-eggs/
+**/dist/
+**/downloads/
+**/eggs/
+**/.eggs/
+**/lib/
+**/lib64/
+**/parts/
+**/sdist/
+**/var/
+**/wheels/
+**/*.egg-info/
+**/.installed.cfg
+**/*.egg
+**/MANIFEST
+
+# Node modules (if not already there)
+**/node_modules/
+
+# Environment files
+**/.env

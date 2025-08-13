@@ -5,16 +5,24 @@ import Layout from "components/layout";
 import { ApolloProvider } from "@apollo/client";
 import client from "lib/apolloClient";
 import { PredictionProvider } from "context/PredictionContext";
+import type { NextPage } from "next";
+import type { ReactElement, ReactNode } from "react";
 
-// A special file in Next.js that wraps every page in your app.
-export default function App({ Component, pageProps }: AppProps) {
+// Custom layout type
+type NextPageWithLayout = NextPage & {
+  getLayout?: (page: ReactElement) => ReactNode;
+};
+
+type AppPropsWithLayout = AppProps & {
+  Component: NextPageWithLayout;
+};
+
+export default function App({ Component, pageProps }: AppPropsWithLayout) {
+  const getLayout = Component.getLayout ?? ((page) => <Layout>{page}</Layout>);
+
   return (
     <ApolloProvider client={client}>
-      <PredictionProvider>
-        <Layout>
-          <Component {...pageProps} />
-        </Layout>
-      </PredictionProvider>  
+      <PredictionProvider>{getLayout(<Component {...pageProps} />)}</PredictionProvider>
     </ApolloProvider>
   );
 }
