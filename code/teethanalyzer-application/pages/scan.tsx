@@ -669,7 +669,7 @@ const ScanPage = () => {
         backdrop-blur-md bg-opacity-50 rounded-3xl p-6 shadow-md hover:shadow-gray-300
         transition-shadow duration-500 relative"
       >     
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-4">  
           <h2 className="text-2xl font-bold text-[#74b0f0]">Upload Images Here:</h2>
           
           {/* Camera controls on the right */}

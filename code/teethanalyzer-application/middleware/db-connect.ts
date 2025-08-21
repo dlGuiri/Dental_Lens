@@ -1,6 +1,6 @@
 import mongoose, {ConnectOptions} from "mongoose";
 
-const MONGO_URI = process.env.MONGO_URI || " ";
+const MONGO_URI = process.env.MONGO_URI || "";
 
 if (!MONGO_URI.length) {
     throw new Error(
