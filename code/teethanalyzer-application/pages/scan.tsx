@@ -3,6 +3,7 @@ import { useSession } from "next-auth/react";
 import { usePrediction } from "context/PredictionContext";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import React, { useState, useRef, useEffect } from 'react';
+import { CldUploadButton } from 'next-cloudinary';
 import Swal from 'sweetalert2';
 import LoadingTeeth from "/public/assets/LoadingTeeth.gif";
 
@@ -36,8 +37,6 @@ const ScanPage = () => {
   const [symptomResponses, setSymptomResponses] = useState("");
   const [confidenceLevel, setConfidenceLevel] = useState<string>("");
   const [isValid, setIsValid] = useState(true);
-
-  // Add these new state variables at the top of your component
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
@@ -46,7 +45,6 @@ const ScanPage = () => {
     return error instanceof DOMException;
   };
 
-  // Alternative: You can also create a more general error type guard
   const hasErrorName = (error: unknown): error is { name: string; message: string } => {
     return typeof error === 'object' && error !== null && 'name' in error && 'message' in error;
   };
@@ -491,7 +489,7 @@ const ScanPage = () => {
         const responseArray = JSON.parse(validationResponse);
         isValidTeethImage = responseArray[0].toLowerCase().trim() === "yes";
         isHealthy = responseArray[1].toLowerCase().trim() === "yes";
-        console.log("WHY IS THISSS:", isHealthy);
+        console.log("Healthy Result:", isHealthy);
       } catch (error) {
         console.error("Failed to parse validation response:", validationResponse, error);
       }
