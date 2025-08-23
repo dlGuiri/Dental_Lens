@@ -41,11 +41,7 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
         return true;
       },
 
-      async jwt({ token, user, account }) {
-        if (account?.providerAccountId) {
-          token.sub = account.providerAccountId;
-        }
-        
+      async jwt({ token, user }) {      
         if (user) {
           token.name = user.name;
         }
@@ -54,8 +50,11 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
       },
 
       async session({ session, token }) {
+        console.log("Session callback token:", token);
+        console.log("Session before:", session);
+
         if (token?.sub) {
-          session.user.oauthId = token.sub;
+          session.user.id = token.sub;
         }
         
         if (!session.user.name && token?.name) {

@@ -8,8 +8,7 @@ declare global {
 declare module "next-auth" {
     interface Session {
         user: {
-            fdlst_private_userId: string;
-            oauthId: string; 
+            id: string;
         } & DefaultSession["user"];
     }
 }

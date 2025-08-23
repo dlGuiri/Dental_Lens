@@ -6,9 +6,9 @@ import arrow from "/public/assets/scan arrow V2.png";
 import { gql, useQuery } from "@apollo/client";
 import { usePrediction } from "context/PredictionContext";
 
-const GET_USER_BY_OAUTH_ID = gql`
-  query GetUserByOauthId($oauthId: String!) {
-    getUserByOauthId(oauthId: $oauthId) {
+const GET_USER_BY_ID = gql`
+  query GetUserById($userId: ID!) {
+    getUserById(userId: $userId) {
       name
       teeth_status
       scanRecords {
@@ -20,22 +20,22 @@ const GET_USER_BY_OAUTH_ID = gql`
   }
 `;
 
-
 const HomeCard1 = ({ className = "", metric = 100 }: { className?: string; metric?: number }) => {
   const { data: session } = useSession();
-  const oauthId = session?.user?.oauthId;
+  const userId = session?.user?.id;
 
   const { predictionResult } = usePrediction();
-  const { data, loading, error, refetch } = useQuery(GET_USER_BY_OAUTH_ID, {
-    variables: { oauthId },
-    skip: !oauthId, // Skip the query if no session yet
+  const { data, loading, error, refetch } = useQuery(GET_USER_BY_ID, {
+    variables: { userId },
+    skip: !userId,
   });
 
+
   useEffect(() => {
-    if (predictionResult && oauthId) {
+    if (predictionResult && userId) {
       refetch();
     }
-  }, [predictionResult, oauthId]);
+  }, [predictionResult, userId]);
 
   type ScanRecord = {
     date: string;
@@ -45,7 +45,7 @@ const HomeCard1 = ({ className = "", metric = 100 }: { className?: string; metri
   
   const name = session?.user?.name || "User";
   const teethStatus = data?.getUserById?.teeth_status || "No Teeth Status Yet";
-  const scanRecords = Array.isArray(data?.getUserByOauthId?.scanRecords) ? data.getUserByOauthId.scanRecords : [];
+  const scanRecords = Array.isArray(data?.getUserById?.scanRecords) ? data?.getUserById?.scanRecords : [];
 
   let displayResultRaw = predictionResult && predictionResult !== "" && predictionResult !== "Invalid image: Please upload a clear image of an actual teeth." ? predictionResult : scanRecords[scanRecords.length - 1]?.result;
   let displayResult = Array.isArray(displayResultRaw) ? displayResultRaw.join(", ") : String(displayResultRaw ?? "");

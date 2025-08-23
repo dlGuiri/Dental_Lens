@@ -16,11 +16,12 @@ const GET_USER_BY_OAUTH_ID = gql`
 `;
 
 const CREATE_SCAN_RECORD = gql`
-  mutation CreateScanRecord($user: ID!, $result: [String!]!, $notes: String) {
-    createScanRecord(user: $user, result: $result, notes: $notes) {
+  mutation CreateScanRecord($user: ID!, $result: [String!]!, $notes: String, $imageUrls: [String!]) {
+    createScanRecord(user: $user, result: $result, notes: $notes, imageUrls: $imageUrls) {
       _id
       result
       notes
+      imageUrls
     }
   }
 `;
@@ -60,13 +61,10 @@ const ScanPage = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const { data: session } = useSession();
-  const oauthId = session?.user?.oauthId;
-
-  const { data: userData } = useQuery(GET_USER_BY_OAUTH_ID, {
-    variables: { oauthId },
-    skip: !oauthId,
-  });
+  const { data: session, status } = useSession();
+  console.log("This is the session: ", session);
+  console.log("This is the user id:", session?.user?.id);
+  const userId = session?.user?.id;
 
   // Replace the handleImageUpload function:
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -435,7 +433,40 @@ const ScanPage = () => {
     return result;
   };
 
-  // Updated handleSubmit with image validation
+  // Function to upload files to Cloudinary
+  const uploadToCloudinary = async (files: File[]): Promise<string[]> => {
+    const uploadPromises = files.map(file => uploadSingleFile(file));
+    return Promise.all(uploadPromises);
+  };
+
+  // Function to upload a single file to Cloudinary
+  const uploadSingleFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'patient_teeth'); // Your preset name
+    
+    try {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Cloudinary upload failed');
+      }
+      
+      const result = await response.json();
+      return result.secure_url; // Returns the Cloudinary URL
+    } catch (error) {
+      console.error('Error uploading to Cloudinary:', error);
+      throw error;
+    }
+  };
+
+  // Submit Images
   const handleSubmit = async () => {
     if (selectedFiles.length === 0) return;
 
@@ -451,7 +482,6 @@ const ScanPage = () => {
     selectedFiles.forEach((file, index) => {
       formData.append("files", file);
     });
-
 
     try {
       setLoading(true);
@@ -493,7 +523,6 @@ const ScanPage = () => {
       } catch (error) {
         console.error("Failed to parse validation response:", validationResponse, error);
       }
-
       
       console.log("Image validation result:", isValidTeethImage, isHealthy);
       if (!isValidTeethImage) {
@@ -511,7 +540,7 @@ const ScanPage = () => {
         // Save healthy result to database
         await createScanRecord({
           variables: {
-            user: userData?.getUserByOauthId?._id,
+            user: userId,
             result: ["No diseases detected"],
             notes: "Healthy",
           },
@@ -521,6 +550,11 @@ const ScanPage = () => {
         setIsValid(false);
         return;
       }
+
+      // Upload images to Cloudinary and get URLs
+      console.log("Uploading to Cloudinary...");
+      const cloudinaryUrls = await uploadToCloudinary(selectedFiles);
+      console.log("Cloudinary URLs:", cloudinaryUrls);
 
       // If validation passes, proceed with the original prediction logic
       const response = await fetch("http://localhost:8000/predict", {
@@ -542,9 +576,10 @@ const ScanPage = () => {
 
       await createScanRecord({
         variables: {
-          user: userData?.getUserByOauthId?._id,
+          user: userId,
           result: prediction,
           notes,
+          imageUrls: cloudinaryUrls,
         },
       });
 
