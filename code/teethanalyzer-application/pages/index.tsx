@@ -11,7 +11,7 @@ const HomePage = () => {
   const userName = "User";
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 auto-rows-[30px]">
-      <HomeCard1 className="md:col-span-9 md:row-span-10" metric={90} userId="683135d97a2c370d25d861e0"/>
+      <HomeCard1 className="md:col-span-9 md:row-span-10" metric={90}/>
       <HomeCard2 className="md:col-span-3 md:row-span-10" />
       <HomeCard3 className="md:col-span-6 md:row-span-8" />
       <HomeCard4 className="md:col-span-3 md:row-span-8" />
