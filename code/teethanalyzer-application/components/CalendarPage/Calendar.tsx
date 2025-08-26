@@ -5,14 +5,6 @@ import CalendarLeft from "@/components/CalendarPage/CalendarLeft";
 import CalendarRight from "@/components/CalendarPage/CalendarRight";
 
 // GraphQL queries and mutations
-const GET_USER_BY_OAUTH_ID = gql`
-  query GetUserByOauthId($oauthId: String!) {
-    getUserByOauthId(oauthId: $oauthId) {
-      _id
-    }
-  }
-`;
-
 const GET_TASKS_BY_USER_AND_DATE = gql`
   query GetTasksByUserAndDate($userId: ID!, $dateId: String!) {
     getTasksByUserAndDate(userId: $userId, dateId: $dateId) {
@@ -125,7 +117,7 @@ type Task = {
 
 export default function Calendar() {
   const { data: session } = useSession();
-  const oauthId = session?.user?.oauthId;
+  const userId = session?.user?.id;
 
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -139,18 +131,6 @@ export default function Calendar() {
   const [allMonthTasks, setAllMonthTasks] = useState<Task[]>([]);
   const [description, setDescription] = useState("");
   const [type, setType] = useState("Social");
-  const [userId, setUserId] = useState<string | null>(null);
-
-  // Get user ID from oauthId
-  const { data: userData } = useQuery(GET_USER_BY_OAUTH_ID, {
-    variables: { oauthId },
-    skip: !oauthId,
-    onCompleted: (data) => {
-      if (data?.getUserByOauthId?._id) {
-        setUserId(data.getUserByOauthId._id);
-      }
-    }
-  });
 
   // Query to get all tasks for the current month (for indicators)
   const { data: monthTasksData, refetch: refetchMonthTasks } = useQuery(GET_TASKS_BY_USER_AND_MONTH, {
@@ -404,7 +384,7 @@ export default function Calendar() {
   const daysCount = daysInMonth(monthIndex, now.getFullYear());
 
   // Show loading state
-  if (!oauthId) {
+  if (!userId) {
     return <div className="flex items-center justify-center">Please log in to view your calendar.</div>;
   }
 
