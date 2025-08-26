@@ -1,35 +1,5 @@
+# For Railway deployment - keep only the backend in Docker
 services:
-  teethanalyzer-db:
-    container_name: teethanalyzer-db
-    image: mongo:latest
-    restart: always
-    environment:
-      DB_NAME: teethanalyzer
-      MONGO_INITDB_DATABASE: teethanalyzer
-    ports:
-        # mongodb://teethanalyzer-db:27017/teethanalyzer
-      - "27017:27017"
-    volumes:
-      - "./.docker/teethanalyzer-db/seed-mongodb.js:/docker-entrypoint-initdb.d/seed-mongodb.js"
-      - mongodb_data_container:/data/db
-
-  application:
-    container_name: teethanalyzer-application
-    image: node:lts
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./code:/home/node/code
-    working_dir: /home/node/code/teethanalyzer-application
-    command: "npm run dev"
-    depends_on:
-      - teethanalyzer-db
-    environment:
-      - HOST=0.0.0.0
-      - CHOKIDAR_USEPOLLING=true
-      - CHOKIDAR_INTERVAL=100
-    tty: true
-
   resnet-backend:
     build: ./code/teethanalyzer-backend
     ports:
@@ -39,9 +9,9 @@ services:
       - ./code/teethanalyzer-backend:/app
     working_dir: /app
     command: "uvicorn backend_api:app --host 0.0.0.0 --port 8000"
-    depends_on:
-      - teethanalyzer-db
+    environment:
+      # Railway will inject these automatically
+      - PORT=8000
     tty: true
-    
-volumes:
-  mongodb_data_container:
+
+# Note: Frontend will be deployed separately from source code on Railway
