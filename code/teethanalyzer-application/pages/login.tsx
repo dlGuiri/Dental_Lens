@@ -1,5 +1,5 @@
 // pages/login.tsx
-import LoginForm from "C:/Users/User/Personal Projects/code/code/teethanalyzer-application/components/LoginPage/LoginForm";
+import LoginForm from "@/components/LoginPage/LoginForm";
 import type { ReactElement } from "react";
 
 export default function LoginPage() {
