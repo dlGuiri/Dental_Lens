@@ -6,6 +6,7 @@ export default /* GraphQL */ `
       email: String!
       avatarUrl: String
       teeth_status: String
+      role: Role
     ): User
 
     updateUser(
@@ -14,6 +15,7 @@ export default /* GraphQL */ `
       email: String
       avatarUrl: String
       teeth_status: String
+      role: Role
     ): User
 
     deleteUser(userId: ID!): User

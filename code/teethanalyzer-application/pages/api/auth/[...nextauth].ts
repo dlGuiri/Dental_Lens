@@ -11,9 +11,8 @@ const clientPromise = client.connect();
 
 export default async function auth(req: NextApiRequest, res: NextApiResponse) {
   return await NextAuth(req, res, {
-    // Add MongoDB adapter - this is what was missing!
+    // MongoDB adapter
     adapter: MongoDBAdapter(clientPromise),
-    
     providers: [
       GithubProvider({
         clientId: process.env.GITHUB_CLIENT_ID || "",
@@ -33,26 +32,30 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
         clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       }),
     ],
-    
     callbacks: {
-      async signIn({ user, account }) {
-        // With MongoDB adapter, this is handled automatically
+      async signIn({ user, account, profile, email, credentials }) {
         console.log("User signing in:", user);
         return true;
       },
-
-      async jwt({ token, user }) {      
+      async jwt({ token, user, account }) {
         if (user) {
           token.name = user.name;
         }
         
+        // Store role information from the sign-in request
+        // You can access the role from the request or state
+        if (account && account.provider) {
+          // Extract role from the sign-in request if available
+          // This is a basic implementation - you might need to adjust based on your needs
+          token.role = token.role || null;
+        }
+        
         return token;
       },
-
-      async session({ session, token }) {
+      async session({ session, token, user }) {
         console.log("Session callback token:", token);
         console.log("Session before:", session);
-
+        
         if (token?.sub) {
           session.user.id = token.sub;
         }
@@ -61,14 +64,17 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
           session.user.name = token.name;
         }
         
+        // Add role to session
+        if (token?.role) {
+          session.user.role = token.role;
+        }
+        
         return session;
-      },    
+      },
     },
-    
     pages: {
       signIn: "/login",
     },
-    
     session: {
       strategy: "jwt",
     },

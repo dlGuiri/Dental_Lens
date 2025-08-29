@@ -1,11 +1,12 @@
+// YouTubeSlider.tsx - Fixed to use userId instead of oauthId
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { gql, useQuery } from "@apollo/client";
 import { usePrediction } from "context/PredictionContext";
 
-const GET_USER_BY_OAUTH_ID = gql`
-  query GetUserByOauthId($oauthId: String!) {
-    getUserByOauthId(oauthId: $oauthId) {
+const GET_USER_BY_ID = gql`
+  query GetUserById($userId: ID!) {
+    getUserById(userId: $userId) {
       name
       teeth_status
       scanRecords {
@@ -124,22 +125,22 @@ const YoutubeSlider = () => {
   const [mainVideo, setMainVideo] = useState<Video>(videos[0]);
 
   const { data: session } = useSession();
-  const oauthId = (session as any)?.user?.oauthId;
+  const userId = session?.user?.id;
 
   const { predictionResult } = usePrediction();
-  const { data, refetch } = useQuery(GET_USER_BY_OAUTH_ID, {
-    variables: { oauthId },
-    skip: !oauthId
+  const { data, refetch } = useQuery(GET_USER_BY_ID, {
+    variables: { userId },
+    skip: !userId
   });
 
   useEffect(() => {
-    if (predictionResult && oauthId) {
+    if (predictionResult && userId) {
       refetch();
     }
-  }, [predictionResult, oauthId, refetch]);
+  }, [predictionResult, userId, refetch]);
 
-  const scanRecords = Array.isArray(data?.getUserByOauthId?.scanRecords)
-    ? data.getUserByOauthId.scanRecords
+  const scanRecords = Array.isArray(data?.getUserById?.scanRecords)
+    ? data.getUserById.scanRecords
     : [];
 
   const latestScanResult = scanRecords.length > 0 ? scanRecords[scanRecords.length - 1].result : "";

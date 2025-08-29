@@ -24,6 +24,12 @@ export const UserSchema = new Schema(
       type: String,
       required: false,
     },
+    role: {
+      type: String,
+      enum: ["patient", "dentist"],
+      default: "patient",
+      required: true,
+    },
     teeth_status: {
       type: String,
       required: false,
