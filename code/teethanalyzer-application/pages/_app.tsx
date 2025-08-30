@@ -1,6 +1,6 @@
+// pages/_app.tsx (Updated)
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
-// This layout wraps every page with shared UI
 import Layout from "components/layout";
 import { ApolloProvider } from "@apollo/client";
 import client from "lib/apolloClient";
@@ -20,6 +20,7 @@ type AppPropsWithLayout = AppProps & {
 };
 
 export default function App({ Component, pageProps }: AppPropsWithLayout) {
+  // Use the page's getLayout function if it exists, otherwise use the default Layout
   const getLayout = Component.getLayout ?? ((page) => <Layout>{page}</Layout>);
 
   return (
@@ -32,3 +33,20 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
     </SessionProvider>
   );
 }
+
+// Example of how to use getLayout in your pages:
+// 
+// For pages that need patient layout:
+// MyPage.getLayout = function getLayout(page: ReactElement) {
+//   return <PatientLayout>{page}</PatientLayout>;
+// };
+//
+// For pages that need dentist layout:
+// MyPage.getLayout = function getLayout(page: ReactElement) {
+//   return <DentistLayout>{page}</DentistLayout>;
+// };
+//
+// For pages that need no layout (like login):
+// MyPage.getLayout = function getLayout(page: ReactElement) {
+//   return page;
+// };

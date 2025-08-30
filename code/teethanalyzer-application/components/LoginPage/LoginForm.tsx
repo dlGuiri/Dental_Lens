@@ -1,213 +1,139 @@
-import { FaGithub, FaUserMd, FaUser } from "react-icons/fa";
+// pages/LoginPage/LoginForm.tsx (Updated - Simplified)
+import { FaGithub, FaGoogle } from "react-icons/fa";
 import Image from "next/image";
 import Logo from "/public/assets/Denty.png";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-
-
-type UserRole = "dentist" | "patient" | null;
+import { useSession } from "next-auth/react";
 
 export default function LoginForm() {
-  const [selectedRole, setSelectedRole] = useState<UserRole>(null);
-
+  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const { data: session, status } = useSession();
   const router = useRouter();
 
-
-
+  // Redirect if already logged in
   useEffect(() => {
-
-    // Check if role is already in URL parameters
-
-    const roleParam = router.query.role as string;
-
-    if (roleParam === "dentist" || roleParam === "patient") {
-
-      setSelectedRole(roleParam);
-
+    if (session && status === "authenticated") {
+      if (session.user.role) {
+        // User has a role, redirect to appropriate dashboard
+        const redirectPath = session.user.role === "patient" ? "/" : "/clinic/dashboard";
+        router.push(redirectPath);
+      } else {
+        // User has no role, redirect to role selection
+        router.push("/role-selection");
+      }
     }
+  }, [session, status, router]);
 
-  }, [router.query.role]);
-
-
-
-  const handleRoleSelect = (role: UserRole) => {
-
-    setSelectedRole(role);
-
-    // Update URL with role parameter
-
-    router.push(`/login?role=${role}`, undefined, { shallow: true });
-
-  };
-
-
-
-  const handleBackToRoleSelection = () => {
-
-    setSelectedRole(null);
-
-    // Remove role from URL
-
-    router.push('/login', undefined, { shallow: true });
-
-  };
-
-
-
-  if (!selectedRole) {
-
-    return (
-
-      <div className="max-w-md w-full bg-white rounded-xl p-6 space-y-6 text-center">
-
-        <h1 className="text-3xl font-bold text-[#4fa1f2]">Welcome!</h1>
-
-        <div className="flex items-center gap-2 text-gray-400 text-sm">
-
-          <hr className="flex-grow border-gray-300" />
-
-          <div className="flex justify-center">
-
-            <Image src={Logo} alt="Denty the Assistant" width={50} style={{ height: "auto" }} />
-
-          </div>
-
-          <hr className="flex-grow border-gray-300" />
-
-        </div>
-
+  const handleSignIn = async (provider: string) => {
+    setIsLoading(provider);
+    
+    try {
+      const result = await signIn(provider, {
+        redirect: false, // Don't redirect immediately
+      });
+      
+      if (result?.ok) {
+        // Check session to see if user has a role
+        const updatedSession = await getSession();
         
+        if (updatedSession?.user?.role) {
+          // User has a role, redirect to appropriate dashboard
+          const redirectPath = updatedSession.user.role === "patient" ? "/" : "/clinic/dashboard";
+          router.push(redirectPath);
+        } else {
+          // New user or user without role, redirect to role selection
+          router.push("/role-selection");
+        }
+      }
+    } catch (error) {
+      console.error("Sign-in error:", error);
+    } finally {
+      setIsLoading(null);
+    }
+  };
 
-        <div className="space-y-4">
-
-          <p className="text-gray-600 text-sm">Please select your role to continue:</p>
-
-          
-
-          <RoleButton
-
-            icon={<FaUserMd />}
-
-            text="I'm a Dentist"
-
-            role="dentist"
-
-            onClick={handleRoleSelect}
-
-          />
-
-          
-
-          <RoleButton
-
-            icon={<FaUser />}
-
-            text="I'm a Patient"
-
-            role="patient"
-
-            onClick={handleRoleSelect}
-
-          />
-
-        </div>
-
+  if (status === "loading" || session) {
+    return (
+      <div className="max-w-md w-full bg-white rounded-xl p-6 space-y-6 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4fa1f2] mx-auto"></div>
+        <p className="text-gray-600">Loading...</p>
       </div>
-
     );
-
   }
 
   return (
-    <div className="max-w-md w-full bg-white rounded-xl p-6 space-y-6 text-center">
+    <div className="max-w-md w-full bg-white rounded-xl p-6 space-y-6 text-center shadow-lg">
+      <h1 className="text-3xl font-bold text-[#4fa1f2]">Welcome to Denty!</h1>
       
-      <h1 className="text-3xl font-bold text-[#4fa1f2]">Welcome back!</h1>
-      <div className="flex items-center justify-between">
-        <button
-          onClick={handleBackToRoleSelection}
-          className="text-[#4fa1f2] hover:text-[#3a8bd9] transition text-sm"
-        >
-          ← Back
-        </button>
-        <h1 className="text-2xl font-bold text-[#4fa1f2]">
-          {selectedRole === "dentist" ? "Dentist Login" : "Patient Login"}
-        </h1>
-        <div className="w-12"></div>
-      </div>
       <div className="flex items-center gap-2 text-gray-400 text-sm">
         <hr className="flex-grow border-gray-300" />
-          <div className="flex justify-center">
-            <Image
-              src={Logo}
-              alt="Denty the Assistant"
-              width={50}
-              style={{ height: "auto" }}
-            />
-          </div>
+        <div className="flex justify-center">
+          <Image 
+            src={Logo} 
+            alt="Denty the Assistant" 
+            width={50} 
+            style={{ height: "auto" }} 
+          />
+        </div>
         <hr className="flex-grow border-gray-300" />
       </div>
+
       <div className="space-y-4">
-        <div className="flex items-center justify-center gap-2 text-gray-600 text-sm">
-          {selectedRole === "dentist" ? <FaUserMd /> : <FaUser />}
-          <span>Signing in as {selectedRole}</span>
-        </div>
+        <p className="text-gray-600 text-sm">
+          Sign in to access your dental care platform
+        </p>
+        
         <AuthButton 
           icon={<FaGithub />} 
           text="Continue with GitHub" 
-          role={selectedRole}
+          provider="github"
+          isLoading={isLoading === "github"}
+          onClick={() => handleSignIn("github")}
         />
+        
+        <AuthButton 
+          icon={<FaGoogle />} 
+          text="Continue with Google" 
+          provider="google"
+          isLoading={isLoading === "google"}
+          onClick={() => handleSignIn("google")}
+        />
+      </div>
+
+      <div className="text-xs text-gray-500 pt-4">
+        New users will be asked to select their role after signing in
       </div>
     </div>
   );
 }
 
-function RoleButton({ 
-  icon, 
-  text, 
-  role, 
-  onClick 
-}: { 
-  icon: React.ReactNode; 
-  text: string; 
-  role: UserRole;
-  onClick: (role: UserRole) => void;
-}) {
+interface AuthButtonProps {
+  icon: React.ReactNode;
+  text: string;
+  provider: string;
+  isLoading: boolean;
+  onClick: () => void;
+}
+
+function AuthButton({ icon, text, provider, isLoading, onClick }: AuthButtonProps) {
   return (
-    <button
-      onClick={() => onClick(role)}
-      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white text-[#4fa1f2] border-2 border-[#4fa1f2] rounded-full hover:bg-[#4fa1f2] hover:text-white transition"
+    <button 
+      onClick={onClick}
+      disabled={isLoading}
+      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-[#4fa1f2] text-white border border-[#4fa1f2] rounded-full hover:bg-white hover:text-[#4fa1f2] transition disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      {icon}
-      <span className="text-sm font-medium">{text}</span>
+      {isLoading ? (
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+      ) : (
+        icon
+      )}
+      <span className="text-sm font-medium">
+        {isLoading ? "Signing in..." : text}
+      </span>
     </button>
   );
 }
 
-function AuthButton({ 
-  icon, 
-  text, 
-  role 
-}: { 
-  icon: React.ReactNode; 
-  text: string; 
-  role: UserRole;
-}) {
-  const handleClick = () => {
-    // Include role in the callback URL so it can be processed after authentication
-    const callbackUrl = `/?role=${role}`;
-    signIn("github", { 
-      callbackUrl: callbackUrl
-    });
-  };
-
-  return (
-    <button
-      onClick={handleClick}
-      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-[#4fa1f2] text-white border border-[#4fa1f2] rounded-full hover:bg-white hover:text-[#4fa1f2] transition"
-    >
-      {icon}
-      <span className="text-sm font-medium border-[#4fa1f2]">{text}</span>
-    </button>
-  );
-}
+// Remove the RoleHandler component - we handle this in the LoginForm now
