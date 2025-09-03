@@ -4,119 +4,56 @@ import Logo from "/public/assets/Denty.png";
 import { signIn } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-
+import DentistAuth from '@/components/auth/dentist-auth';
 
 type UserRole = "dentist" | "patient" | null;
 
 export default function LoginForm() {
   const [selectedRole, setSelectedRole] = useState<UserRole>(null);
-
   const router = useRouter();
 
-
-
   useEffect(() => {
-
     // Check if role is already in URL parameters
-
     const roleParam = router.query.role as string;
-
     if (roleParam === "dentist" || roleParam === "patient") {
-
       setSelectedRole(roleParam);
-
     }
-
   }, [router.query.role]);
 
-
-
   const handleRoleSelect = (role: UserRole) => {
-
     setSelectedRole(role);
-
     // Update URL with role parameter
-
     router.push(`/login?role=${role}`, undefined, { shallow: true });
-
   };
-
-
 
   const handleBackToRoleSelection = () => {
-
     setSelectedRole(null);
-
     // Remove role from URL
-
     router.push('/login', undefined, { shallow: true });
-
   };
-
-
-
   if (!selectedRole) {
-
     return (
-
       <div className="max-w-md w-full bg-white rounded-xl p-6 space-y-6 text-center">
-
         <h1 className="text-3xl font-bold text-[#4fa1f2]">Welcome!</h1>
-
         <div className="flex items-center gap-2 text-gray-400 text-sm">
-
           <hr className="flex-grow border-gray-300" />
-
           <div className="flex justify-center">
-
             <Image src={Logo} alt="Denty the Assistant" width={50} style={{ height: "auto" }} />
-
           </div>
-
           <hr className="flex-grow border-gray-300" />
-
-        </div>
-
-        
-
+        </div>        
         <div className="space-y-4">
-
-          <p className="text-gray-600 text-sm">Please select your role to continue:</p>
-
-          
-
+          <p className="text-gray-600 text-sm">Please select your role to continue:</p>          
+          <DentistAuth />    
           <RoleButton
-
-            icon={<FaUserMd />}
-
-            text="I'm a Dentist"
-
-            role="dentist"
-
-            onClick={handleRoleSelect}
-
-          />
-
-          
-
-          <RoleButton
-
             icon={<FaUser />}
-
             text="I'm a Patient"
-
             role="patient"
-
             onClick={handleRoleSelect}
-
           />
-
         </div>
-
       </div>
-
     );
-
   }
 
   return (

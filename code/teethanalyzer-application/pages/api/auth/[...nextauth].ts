@@ -17,6 +17,8 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
       GithubProvider({
         clientId: process.env.GITHUB_CLIENT_ID || "",
         clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
+        // Add allowDangerousEmailAccountLinking here for newer versions
+        allowDangerousEmailAccountLinking: true,
         profile(profile) {
           console.log("GitHub Profile:", profile);
           return {
@@ -30,11 +32,23 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
       GoogleProvider({
         clientId: process.env.GOOGLE_CLIENT_ID || "",
         clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+        // Add allowDangerousEmailAccountLinking here too
+        allowDangerousEmailAccountLinking: true,
       }),
     ],
     callbacks: {
       async signIn({ user, account, profile, email, credentials }) {
-        console.log("User signing in:", user);
+        console.log("=== SIGN IN DEBUG ===");
+        console.log("User:", user);
+        console.log("Account:", account);
+        console.log("Profile:", profile);
+        console.log("==================");
+        
+        // Always allow OAuth sign-ins (will create new accounts automatically)
+        if (account?.provider === "github" || account?.provider === "google") {
+          return true;
+        }
+        
         return true;
       },
       async jwt({ token, user, account }) {
@@ -42,11 +56,7 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
           token.name = user.name;
         }
         
-        // Store role information from the sign-in request
-        // You can access the role from the request or state
         if (account && account.provider) {
-          // Extract role from the sign-in request if available
-          // This is a basic implementation - you might need to adjust based on your needs
           token.role = token.role || null;
         }
         
@@ -64,7 +74,6 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
           session.user.name = token.name;
         }
         
-        // Add role to session
         if (token?.role) {
           session.user.role = token.role;
         }
