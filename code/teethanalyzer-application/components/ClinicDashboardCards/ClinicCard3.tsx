@@ -14,16 +14,18 @@ const ClinicCard3 = ({
     >
       <h2 className="text-3xl font-bold text-white mb-6">Dental News</h2>
       
-      <div className="space-y-4">
+      <div className="bg-white rounded-2xl p-6 min-h-[300px]">
         {newsItems.length > 0 ? (
-          newsItems.map((news, idx) => (
-            <div key={idx} className="bg-white/20 backdrop-blur-sm rounded-xl p-4">
-              <p className="text-white text-sm">{news}</p>
-            </div>
-          ))
+          <div className="space-y-4">
+            {newsItems.map((news, idx) => (
+              <div key={idx} className="bg-gray-50 rounded-xl p-4">
+                <p className="text-gray-800 text-sm">{news}</p>
+              </div>
+            ))}
+          </div>
         ) : (
-          <div className="flex items-center justify-center h-full min-h-[200px]">
-            <p className="text-white/70 text-lg">No recent news</p>
+          <div className="flex items-center justify-center h-full min-h-[250px]">
+            <p className="text-gray-400 text-lg">No recent news</p>
           </div>
         )}
       </div>

@@ -26,13 +26,15 @@ const ClinicCard2 = ({
     >
       <h2 className="text-3xl font-bold text-white mb-6">Recent Activity</h2>
       
-      <div className="space-y-4">
-        {activities.map((activity) => (
-          <div key={activity.id} className="flex items-start space-x-3">
-            <div className="w-2 h-2 bg-white rounded-full mt-2 flex-shrink-0"></div>
-            <p className="text-white text-base leading-relaxed">{activity.text}</p>
-          </div>
-        ))}
+      <div className="bg-white rounded-2xl p-6 min-h-[300px]">
+        <div className="space-y-4">
+          {activities.map((activity) => (
+            <div key={activity.id} className="flex items-start space-x-3">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+              <p className="text-gray-800 text-base leading-relaxed">{activity.text}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
