@@ -8,6 +8,7 @@ import TipsIcon from "@/components/sidebar/tips-icon";
 import ChatbotIcon from "@/components/sidebar/chatbot-icon";
 import GoalsIcon from "@/components/sidebar/goals-icon";
 import SettingsIcon from "@/components/sidebar/settings-icon";
+import DentistIcon from "./dentist-icon";
 
 const Sidebar = (): JSX.Element => {
     const pathname = usePathname();
@@ -25,11 +26,12 @@ const Sidebar = (): JSX.Element => {
                 <br />
                 <TipsIcon isActive={pathname === "/recommended"} />
                 <br />
+                <DentistIcon isActive={pathname === "/ChatPagePatient"} />
+                <br />
                 <ChatbotIcon isActive={pathname === "/chatbot"} />
                 <br />
                 <GoalsIcon isActive={pathname === "/calendar"} />
-                <br />
-                <SettingsIcon />
+                <SettingsIcon isActive={pathname === "/login"} />
             </div>
         </aside>
     );

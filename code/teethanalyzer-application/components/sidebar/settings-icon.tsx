@@ -8,7 +8,7 @@ const SettingsIcon = ({ isActive = false }: { isActive?: boolean }): JSX.Element
   return (
     <div
       onClick={() => signOut({ callbackUrl: "/login" })}
-      className={`group relative w-12 h-12 mx-auto mt-24 rounded-xl cursor-pointer transition-colors overflow-hidden ${
+      className={`group relative w-12 h-12 mx-auto mt-10 rounded-xl cursor-pointer transition-colors overflow-hidden ${
         isActive ? "bg-blue-50" : "hover:bg-blue-50"
       }`}
     >

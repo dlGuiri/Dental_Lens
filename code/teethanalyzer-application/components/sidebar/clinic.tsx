@@ -22,7 +22,7 @@ const DashboardIcon = ({ isActive }: { isActive: boolean }) => (
 );
 
 const PatientsIcon = ({ isActive }: { isActive: boolean }) => (
-  <Link href="/clinic/patients">
+  <Link href="/clinic/chatpage">
     <div className={`p-3 rounded-lg transition-colors cursor-pointer ${
       isActive 
         ? 'bg-blue-100 text-blue-600' 
