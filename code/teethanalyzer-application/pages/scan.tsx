@@ -7,14 +7,6 @@ import { CldUploadButton } from 'next-cloudinary';
 import Swal from 'sweetalert2';
 import LoadingTeeth from "/public/assets/LoadingTeeth.gif";
 
-const GET_USER_BY_OAUTH_ID = gql`
-  query GetUserByOauthId($oauthId: String!) {
-    getUserByOauthId(oauthId: $oauthId) {
-      _id
-    }
-  }
-`;
-
 const CREATE_SCAN_RECORD = gql`
   mutation CreateScanRecord($user: ID!, $result: [String!]!, $notes: String, $imageUrls: [String!]) {
     createScanRecord(user: $user, result: $result, notes: $notes, imageUrls: $imageUrls) {
@@ -41,6 +33,9 @@ const ScanPage = () => {
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
+  const [limeExplanation, setLimeExplanation] = useState<string | null>(null);
+  const [showLimeExplanation, setShowLimeExplanation] = useState(false);
+  const [generatingLime, setGeneratingLime] = useState(false);
 
   const isMediaError = (error: unknown): error is DOMException => {
     return error instanceof DOMException;
@@ -433,6 +428,40 @@ const ScanPage = () => {
     return result;
   };
 
+  const generateLimeExplanation = async () => {
+    if (selectedFiles.length === 0) {
+      alert('Please upload an image first');
+      return;
+    }
+
+    setGeneratingLime(true);
+    setLimeExplanation(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFiles[0]); // Use first image
+
+      const response = await fetch('http://localhost:8000/predict-with-lime?num_samples=300', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('LIME explanation failed');
+      }
+
+      const data = await response.json();
+      setLimeExplanation(data.explanation_image);
+      setShowLimeExplanation(true);
+      
+    } catch (error) {
+      console.error('Error generating LIME explanation:', error);
+      alert('Failed to generate LIME explanation. Please try again.');
+    } finally {
+      setGeneratingLime(false);
+    }
+  };
+
   // Function to upload files to Cloudinary
   const uploadToCloudinary = async (files: File[]): Promise<string[]> => {
     const uploadPromises = files.map(file => uploadSingleFile(file));
@@ -633,6 +662,29 @@ const ScanPage = () => {
         symptomsPromise,
       ]);
 
+      // Generate LIME explanation automatically
+      console.log("Generating LIME explanation...");
+      try {
+        const limeFormData = new FormData();
+        limeFormData.append('file', selectedFiles[0]); // Use first image
+
+        const limeResponse = await fetch('http://localhost:8000/predict-with-lime?num_samples=300', {
+          method: 'POST',
+          body: limeFormData,
+        });
+
+        if (limeResponse.ok) {
+          const limeData = await limeResponse.json();
+          setLimeExplanation(limeData.explanation_image);
+          console.log("LIME explanation generated successfully");
+        } else {
+          console.error("LIME generation failed:", limeResponse.status);
+        }
+      } catch (error) {
+        console.error("Error generating LIME explanation:", error);
+        // Don't block the main flow if LIME fails
+      }
+
     } catch (error) {
       console.error("Error uploading image:", error);
       setPredictionResult("Error: could not get prediction.");
@@ -689,6 +741,15 @@ const ScanPage = () => {
                 <p className="text-sm font-medium mb-2">Symptoms:</p>
                 <p className="text-sm">{symptomResponses}</p>
               </div>
+
+              {limeExplanation && (
+                <button
+                  onClick={() => setShowLimeExplanation(true)}
+                  className="px-6 py-2 bg-purple-600 text-white rounded-3xl hover:bg-purple-700 transition self-start mt-4"
+                >
+                  🔍 View AI Explanation
+                </button>
+              )}
             </div>
           ) : (
             <p className="mt-4 text-2xl text-white font-semibold">
@@ -873,6 +934,57 @@ const ScanPage = () => {
         {/* Hidden canvas for photo capture */}
         <canvas ref={canvasRef} style={{ display: 'none' }} />
       </div>
+
+      {/* LIME Explanation Modal */}
+      {showLimeExplanation && limeExplanation && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowLimeExplanation(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl p-6 max-w-4xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-2xl font-bold text-gray-800">
+                🔍 AI Explanation - LIME Analysis
+              </h3>
+              <button
+                onClick={() => setShowLimeExplanation(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-gray-700">
+                <strong>How to read:</strong>
+              </p>
+              <ul className="text-sm text-gray-600 mt-2 space-y-1">
+                <li>🟢 Green regions = Areas supporting the diagnosis</li>
+                <li>🔴 Red regions = Areas contradicting the diagnosis</li>
+                <li>⚪ Neutral areas = Not significant for diagnosis</li>
+              </ul>
+            </div>
+
+            <img
+              src={`data:image/png;base64,${limeExplanation}`}
+              alt="LIME Explanation"
+              className="w-full rounded-lg shadow-lg"
+            />
+
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setShowLimeExplanation(false)}
+                className="px-6 py-2 bg-gray-600 text-white rounded-3xl hover:bg-gray-700 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

@@ -2,16 +2,6 @@ import { Schema, InferSchemaType } from "mongoose";
 
 export const UserSchema = new Schema(
   {
-    oauthProvider: {
-      type: String,
-      required: true,
-      enum: ["google", "github", "facebook", "custom"],
-    },
-    oauthId: {
-      type: String,
-      required: true,
-      unique: true,
-    },
     name: {
       type: String,
       required: true,

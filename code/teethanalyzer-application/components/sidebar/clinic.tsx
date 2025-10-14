@@ -10,8 +10,8 @@ const DashboardIcon = ({ isActive }: { isActive: boolean }) => (
   <Link href="/clinic/dashboard">
     <div className={`p-3 rounded-lg transition-colors cursor-pointer ${
       isActive 
-        ? 'bg-blue-100 text-blue-600' 
-        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+        ? 'bg-blue-100 text-blue-400' 
+        : 'text-blue-400 hover:bg-blue-300 hover:text-white'
     }`}>
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -25,8 +25,8 @@ const PatientsIcon = ({ isActive }: { isActive: boolean }) => (
   <Link href="/clinic/chatpage">
     <div className={`p-3 rounded-lg transition-colors cursor-pointer ${
       isActive 
-        ? 'bg-blue-100 text-blue-600' 
-        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+        ? 'bg-blue-100 text-blue-400' 
+        : 'text-blue-400 hover:bg-blue-300 hover:text-white'
     }`}>
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -41,7 +41,7 @@ const AppointmentsIcon = ({ isActive }: { isActive: boolean }) => (
     <div className={`p-3 rounded-lg transition-colors cursor-pointer ${
       isActive 
         ? 'bg-blue-100 text-blue-600' 
-        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+        : 'text-blue-400 hover:bg-blue-300 hover:text-white'
     }`}>
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -56,7 +56,7 @@ const SettingsIcon = ({ isActive }: { isActive: boolean }) => (
     <div className={`p-3 rounded-lg transition-colors cursor-pointer ${
       isActive 
         ? 'bg-blue-100 text-blue-600' 
-        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+        : 'text-blue-400 hover:bg-blue-300 hover:text-white'
     }`}>
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -79,7 +79,7 @@ const LogoutIcon = () => {
   return (
     <div 
       onClick={handleLogout}
-      className="p-3 rounded-lg transition-colors cursor-pointer text-red-500 hover:bg-red-50 hover:text-red-700"
+      className="p-3 rounded-lg transition-colors cursor-pointer text-blue-400 hover:bg-blue-300 hover:text-white"
     >
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -96,7 +96,7 @@ const ClinicSidebar = (): JSX.Element => {
         <aside className="bg-white border-r border-gray-200 p-4 fixed top-0 left-0 h-full w-24 z-10">
             <div className="flex flex-col items-center">
                 <Logo />
-                <p className="text-blue-600 text-center mt-2 font-sans text-xs">Clinic</p>
+                <p className="text-blue-400 text-center mt-2 font-sans text-xs">Clinic</p>
             </div>
             <div className="mt-24 flex flex-col items-center space-y-6">
                 <DashboardIcon isActive={pathname === "/clinic/dashboard"} />

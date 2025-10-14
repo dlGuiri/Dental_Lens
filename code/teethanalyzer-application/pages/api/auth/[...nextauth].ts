@@ -1,5 +1,6 @@
 import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
+import EmailProvider from "next-auth/providers/email";
 import { NextApiRequest, NextApiResponse } from "next";
 import NextAuth from "next-auth";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
@@ -14,10 +15,20 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
     // MongoDB adapter
     adapter: MongoDBAdapter(clientPromise),
     providers: [
+      EmailProvider({
+        server: {
+          host: process.env.EMAIL_SERVER_HOST,
+          port: Number(process.env.EMAIL_SERVER_PORT),
+          auth: {
+            user: process.env.EMAIL_SERVER_USER,
+            pass: process.env.EMAIL_SERVER_PASSWORD,
+          },
+        },
+        from: process.env.EMAIL_FROM,
+      }),
       GithubProvider({
         clientId: process.env.GITHUB_CLIENT_ID || "",
         clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
-        // Add allowDangerousEmailAccountLinking here for newer versions
         allowDangerousEmailAccountLinking: true,
         profile(profile) {
           console.log("GitHub Profile:", profile);
@@ -32,7 +43,6 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
       GoogleProvider({
         clientId: process.env.GOOGLE_CLIENT_ID || "",
         clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-        // Add allowDangerousEmailAccountLinking here too
         allowDangerousEmailAccountLinking: true,
       }),
     ],
@@ -44,8 +54,23 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
         console.log("Profile:", profile);
         console.log("==================");
         
-        // Always allow OAuth sign-ins (will create new accounts automatically)
-        if (account?.provider === "github" || account?.provider === "google") {
+        // For email provider, generate name from email if not exists
+        if (account?.provider === "email" && user.email && !user.name) {
+          const emailUsername = user.email.split('@')[0];
+          // Convert to readable format: johndoe123 -> John Doe
+          const readableName = emailUsername
+            .replace(/[._-]/g, ' ')
+            .replace(/\d+/g, '')
+            .trim()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ') || emailUsername;
+          
+          user.name = readableName;
+        }
+        
+        // Always allow OAuth and email sign-ins
+        if (account?.provider === "github" || account?.provider === "google" || account?.provider === "email") {
           return true;
         }
         
@@ -55,11 +80,9 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
         if (user) {
           token.name = user.name;
         }
-        
         if (account && account.provider) {
           token.role = token.role || null;
         }
-        
         return token;
       },
       async session({ session, token, user }) {
@@ -69,11 +92,9 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
         if (token?.sub) {
           session.user.id = token.sub;
         }
-        
         if (!session.user.name && token?.name) {
           session.user.name = token.name;
         }
-        
         if (token?.role) {
           session.user.role = token.role;
         }
@@ -83,6 +104,7 @@ export default async function auth(req: NextApiRequest, res: NextApiResponse) {
     },
     pages: {
       signIn: "/login",
+      verifyRequest: "/verify-request", // Page shown after email is sent
     },
     session: {
       strategy: "jwt",

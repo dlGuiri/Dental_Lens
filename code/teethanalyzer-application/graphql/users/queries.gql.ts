@@ -1,4 +1,5 @@
 export default `
     getUserById(userId: ID!): User
-    getUserByOauthId(oauthId: String!): User
+    getAllUsers: [User]
+    getUserCount: Int
 `;

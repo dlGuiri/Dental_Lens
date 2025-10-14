@@ -1,0 +1,19 @@
+{
+  "disease_classes": [
+    "calculus",
+    "caries",
+    "gingivitis",
+    "hypodontia",
+    "mouth ulcer",
+    "tooth discoloration"
+  ],
+  "label_encoder_classes": [
+    "calculus",
+    "caries",
+    "gingivitis",
+    "hypodontia",
+    "mouth ulcer",
+    "tooth discoloration"
+  ],
+  "best_model": "LightGBM"
+}

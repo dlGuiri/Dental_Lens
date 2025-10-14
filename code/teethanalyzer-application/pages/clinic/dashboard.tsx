@@ -1,10 +1,18 @@
-import { GetServerSideProps } from "next";
-import { getServerSession } from "next-auth";
-import { ReactElement } from "react";
-import ClinicLayout from "@/components/layout/clinic";
 import ClinicCard1 from "@/components/ClinicDashboardCards/ClinicCard1";
 import ClinicCard2 from "@/components/ClinicDashboardCards/ClinicCard2";
 import ClinicCard3 from "@/components/ClinicDashboardCards/ClinicCard3";
+import ClinicLayout from "@/components/layout/clinic";
+import { getServerSession } from "next-auth";
+import { useQuery } from "@apollo/client";
+import { GetServerSideProps } from "next";
+import { ReactElement } from "react";
+import gql from "graphql-tag";
+
+const GET_USER_COUNT = gql`
+  query GetUserCount {
+    getUserCount
+  }
+`
 
 // This is your default dentist account for MVP
 const DEFAULT_DENTIST = {
