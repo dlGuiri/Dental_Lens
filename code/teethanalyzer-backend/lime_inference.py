@@ -98,12 +98,29 @@ class LIMEPredictor:
     
     def _load_lightgbm_model(self, models_dir):
         """Load LightGBM model and metadata"""
+        import pickle
+        
         # Load metadata
         with open(os.path.join(models_dir, 'metadata.json'), 'r') as f:
             metadata = json.load(f)
         
-        # Load LightGBM model
-        lgb_model = lgb.Booster(model_file=os.path.join(models_dir, 'lightgbm_model.txt'))
+        # Try loading as pickle first (more robust)
+        pkl_path = os.path.join(models_dir, 'lightgbm_model.pkl')
+        txt_path = os.path.join(models_dir, 'lightgbm_model.txt')
+        
+        if os.path.exists(pkl_path):
+            logger.info("Loading LightGBM from pickle file...")
+            with open(pkl_path, 'rb') as f:
+                lgb_model = pickle.load(f)
+        elif os.path.exists(txt_path):
+            logger.info("Loading LightGBM from text file...")
+            try:
+                lgb_model = lgb.Booster(model_file=txt_path)
+            except Exception as e:
+                logger.error(f"Failed to load as Booster: {e}")
+                raise ValueError("LightGBM model file appears to be corrupted. Please re-train and save the model.")
+        else:
+            raise FileNotFoundError("No LightGBM model file found (tried .pkl and .txt)")
         
         return lgb_model, metadata
     
@@ -123,10 +140,16 @@ class LIMEPredictor:
                 # Extract features
                 features = self.cnn_model.extract_features(img_tensor).cpu().numpy()
             
-            # LightGBM prediction
-            prediction_probs = self.lightgbm_model.predict(features)
-            hybrid_prediction = np.argmax(prediction_probs)
-            hybrid_probabilities = prediction_probs[0]
+            # LightGBM prediction - handle both Booster and sklearn wrapper
+            if isinstance(self.lightgbm_model, lgb.Booster):
+                # Booster model
+                prediction_probs = self.lightgbm_model.predict(features)
+                hybrid_prediction = np.argmax(prediction_probs)
+                hybrid_probabilities = prediction_probs[0]
+            else:
+                # sklearn wrapper model
+                hybrid_prediction = self.lightgbm_model.predict(features)[0]
+                hybrid_probabilities = self.lightgbm_model.predict_proba(features)[0]
             
             return {
                 'cnn_prediction': self.label_encoder.inverse_transform([cnn_prediction])[0],
@@ -142,7 +165,7 @@ class LIMEPredictor:
             logger.error(f"Prediction error: {str(e)}")
             raise
     
-    def predict_with_lime(self, image_bytes, num_samples=300):
+    def predict_with_lime(self, image_bytes, num_samples=100):
         """Prediction with LIME explanation"""
         try:
             logger.info(f"Generating LIME explanation with {num_samples} samples...")
@@ -265,12 +288,33 @@ class LIMEPredictor:
             img_base64 = base64.b64encode(buf.read()).decode('utf-8')
             plt.close()
             
+            # Calculate LIME statistics
+            local_exp = explanation.local_exp[predicted_class]
+            positive_sum = sum(imp for _, imp in local_exp if imp > 0)
+            negative_sum = sum(imp for _, imp in local_exp if imp < 0)
+            net_evidence = positive_sum + negative_sum
+            
+            # Generate clinical interpretation
+            clinical_interpretation = []
+            if positive_sum > abs(negative_sum):
+                clinical_interpretation.append("The model found more supporting evidence than contradicting evidence")
+                clinical_interpretation.append("Key pathological regions were identified and weighted appropriately")
+            else:
+                clinical_interpretation.append("The model found mixed or contradictory evidence")
+                clinical_interpretation.append("Consider reviewing the diagnosis or obtaining additional images")
+            
             logger.info("LIME explanation generated successfully")
             
             return {
                 'explanation_image': img_base64,
                 'prediction': prediction_result,
-                'num_samples': num_samples
+                'num_samples': num_samples,
+                'lime_statistics': {
+                    'total_positive_evidence': float(positive_sum),
+                    'total_negative_evidence': float(negative_sum),
+                    'net_evidence': float(net_evidence),
+                    'clinical_interpretation': clinical_interpretation
+                }
             }
             
         except Exception as e:

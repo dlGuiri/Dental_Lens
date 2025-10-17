@@ -8,12 +8,25 @@ import Swal from 'sweetalert2';
 import LoadingTeeth from "/public/assets/LoadingTeeth.gif";
 
 const CREATE_SCAN_RECORD = gql`
-  mutation CreateScanRecord($user: ID!, $result: [String!]!, $notes: String, $imageUrls: [String!]) {
-    createScanRecord(user: $user, result: $result, notes: $notes, imageUrls: $imageUrls) {
+  mutation CreateScanRecord(
+    $user: ID!, 
+    $result: [String!]!, 
+    $notes: [String!], 
+    $imageUrls: [String!],
+    $limeVisualizationUrl: String,
+  ) {
+    createScanRecord(
+      user: $user, 
+      result: $result, 
+      notes: $notes, 
+      imageUrls: $imageUrls,
+      limeVisualizationUrl: $limeVisualizationUrl,
+    ) {
       _id
       result
       notes
       imageUrls
+      limeVisualizationUrl
     }
   }
 `;
@@ -36,6 +49,10 @@ const ScanPage = () => {
   const [limeExplanation, setLimeExplanation] = useState<string | null>(null);
   const [showLimeExplanation, setShowLimeExplanation] = useState(false);
   const [generatingLime, setGeneratingLime] = useState(false);
+  const [totalPositive, setTotalPositive] = useState<number | null>(null);
+  const [totalNegative, setTotalNegative] = useState<number | null>(null);
+  const [netEvidence, setNetEvidence] = useState<number | null>(null);
+
 
   const isMediaError = (error: unknown): error is DOMException => {
     return error instanceof DOMException;
@@ -309,37 +326,6 @@ const ScanPage = () => {
     }
   };
 
-  // Add a test function to check what devices are available
-  const testCameraDevices = async () => {
-    try {
-      console.log('Testing camera access...');
-      
-      // Basic test
-      const testStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      console.log('Basic camera access: SUCCESS');
-      testStream.getTracks().forEach(track => track.stop());
-      
-      // Get devices
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      
-      console.log('Available cameras:');
-      videoDevices.forEach((device, index) => {
-        console.log(`${index + 1}. ${device.label || 'Unknown Camera'} (ID: ${device.deviceId.substring(0, 20)}...)`);
-      });
-      
-      return videoDevices;
-    } catch (error) {
-      console.error('Camera test failed:', error);
-      
-      if (isMediaError(error)) {
-        console.error(`Error details: ${error.name} - ${error.message}`);
-      }
-      
-      return [];
-    }
-  };
-
   const closeCamera = () => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
@@ -380,6 +366,26 @@ const ScanPage = () => {
         }
       }, 'image/jpeg', 0.9);
     }
+  };
+
+  // Function to convert base64 to File
+  const base64ToFile = (base64String: string, filename: string): File => {
+    // Remove data URL prefix if present
+    const base64Data = base64String.includes('base64,') 
+      ? base64String.split('base64,')[1] 
+      : base64String;
+    
+    // Convert base64 to binary
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Create blob and convert to File
+    const blob = new Blob([bytes], { type: 'image/png' });
+    return new File([blob], filename, { type: 'image/png' });
   };
 
   // Updated streamGeminiResponse function with callback for real-time streaming
@@ -441,7 +447,7 @@ const ScanPage = () => {
       const formData = new FormData();
       formData.append('file', selectedFiles[0]); // Use first image
 
-      const response = await fetch('http://localhost:8000/predict-with-lime?num_samples=300', {
+      const response = await fetch('http://localhost:8000/predict-with-lime?num_samples=100', {
         method: 'POST',
         body: formData,
       });
@@ -506,6 +512,8 @@ const ScanPage = () => {
     setCauseResponses("");
     setSymptomResponses("");
     setConfidenceLevel("");
+    setLimeExplanation(null);
+    setGeneratingLime(true); // New state for LIME loading
     
     const formData = new FormData();
     selectedFiles.forEach((file, index) => {
@@ -554,75 +562,80 @@ const ScanPage = () => {
       }
       
       console.log("Image validation result:", isValidTeethImage, isHealthy);
+      
       if (!isValidTeethImage) {
         setIsValid(false);
-        // Set error message instead of prediction result
         setPredictionResult("Invalid image: Please upload a clear image of an actual teeth.");
         setConfidenceLevel("");
         setLoading(false);
+        setGeneratingLime(false);
         return;
       } else if (isHealthy) {
         setIsValid(false);
         setPredictionResult("No diseases detected");
         setConfidenceLevel("");
 
+        // Upload image to Cloudinary even for healthy teeth
+        console.log("Uploading healthy teeth image to Cloudinary...");
+        const cloudinaryUrls = await uploadToCloudinary(selectedFiles);
+
         // Save healthy result to database
         await createScanRecord({
           variables: {
             user: userId,
             result: ["No diseases detected"],
-            notes: "Healthy",
+            notes: ["Healthy teeth"],
+            imageUrls: cloudinaryUrls,
+            analysisDetails: {
+              cnnPrediction: "Healthy",
+              cnnConfidence: 1.0,
+              hybridPrediction: "Healthy",
+              hybridConfidence: 1.0,
+              totalPositiveEvidence: 0,
+              totalNegativeEvidence: 0,
+              netEvidence: 0,
+              clinicalInterpretation: ["No diseases detected", "Teeth appear healthy"],
+              allProbabilities: JSON.stringify({}),
+            },
           },
         });
 
         setLoading(false);
-        setIsValid(false);
+        setGeneratingLime(false);
         return;
       }
 
-      // Upload images to Cloudinary and get URLs
+      // Upload images to Cloudinary
       console.log("Uploading to Cloudinary...");
       const cloudinaryUrls = await uploadToCloudinary(selectedFiles);
       console.log("Cloudinary URLs:", cloudinaryUrls);
 
-      // If validation passes, proceed with the original prediction logic
-      const response = await fetch("http://localhost:8000/predict", {
-        method: "POST",
-        body: formData,
+      // ===== STEP 1: FAST PREDICTION (NO LIME) =====
+      console.log("Getting fast prediction...");
+      const fastFormData = new FormData();
+      fastFormData.append('file', selectedFiles[0]);
+      
+      const fastResponse = await fetch('http://localhost:8000/predict-fast', {
+        method: 'POST',
+        body: fastFormData,
       });
-
-      if (!response.ok) {
-        throw new Error("Prediction failed");
+      
+      if (!fastResponse.ok) {
+        throw new Error("Fast prediction failed");
       }
 
-      const data = await response.json();
-      const prediction = data.prediction[0];
+      const fastData = await fastResponse.json();
+      
+      // Extract prediction from fast response
+      const prediction = fastData.prediction.hybrid_prediction;
       setPredictionResult(prediction);
-      setConfidenceLevel(data.prediction[1]); 
-      setLoading(false);
+      setConfidenceLevel(`${(fastData.prediction.hybrid_confidence * 100).toFixed(1)}%`);
+      
+      console.log("Fast prediction received:", prediction);
 
-      let notes = `${data.prediction[1]} chance of having a disease`;
+      // Stream Gemini responses immediately (while LIME generates in background)
+      const diseaseName = prediction.toLowerCase() === "calculus" ? "Dental Calculus" : prediction;
 
-      await createScanRecord({
-        variables: {
-          user: userId,
-          result: prediction,
-          notes,
-          imageUrls: cloudinaryUrls,
-        },
-      });
-
-      // Initialize arrays with empty strings for each prediction
-      const tempSeverityResponses = new Array(prediction.length).fill("");
-      const tempCauseResponses = new Array(prediction.length).fill("");
-      const tempSymptomResponses = new Array(prediction.length).fill("");
-
-      setSeverityResponses("");
-      setCauseResponses("");
-      setSymptomResponses("");
-
-      // Stream responses
-      // Stream responses for single prediction
       const severityPromise = streamGeminiResponse(
         `does this teeth have severe or mild ${prediction}? Just analyze the teeth in the image, don't consider other factors such as the teeth in the back that cannot be seen. Respond with a dash "-" followed by the severity assessment. Respond also in a straightforward manner. don't include sentences of doubt. After giving the severity level, put a period and give a description of the disease up to a maximum of 45 words`,
         base64Image,
@@ -632,8 +645,6 @@ const ScanPage = () => {
         20, 
         3
       );
-
-      const diseaseName = prediction.toLowerCase() === "calculus" ? "Dental Calculus" : prediction;
 
       const causesPromise = streamGeminiResponse(
         `what are the causes of ${diseaseName}? Respond in a straightforward manner. Limit response up to a maximum of 45 words.`,
@@ -655,42 +666,79 @@ const ScanPage = () => {
         3
       );
 
-      // Wait for all streams to complete
+      setLoading(false);
+
+      // Wait for Gemini streams
       await Promise.all([
         severityPromise,
         causesPromise,
         symptomsPromise,
       ]);
 
-      // Generate LIME explanation automatically
-      console.log("Generating LIME explanation...");
-      try {
-        const limeFormData = new FormData();
-        limeFormData.append('file', selectedFiles[0]); // Use first image
-
-        const limeResponse = await fetch('http://localhost:8000/predict-with-lime?num_samples=300', {
-          method: 'POST',
-          body: limeFormData,
-        });
-
+      // ===== STEP 2: GENERATE LIME IN BACKGROUND =====
+      console.log("Generating LIME explanation in background...");
+      
+      // Start LIME generation (don't await - runs in background)
+      const limeFormData = new FormData();
+      limeFormData.append('file', selectedFiles[0]);
+      
+      fetch('http://localhost:8000/generate-lime?num_samples=100', {
+        method: 'POST',
+        body: limeFormData,
+      })
+      .then(async (limeResponse) => {
         if (limeResponse.ok) {
           const limeData = await limeResponse.json();
+          
+          // Store LIME visualization
           setLimeExplanation(limeData.explanation_image);
-          console.log("LIME explanation generated successfully");
+          setGeneratingLime(false);
+          
+          // Convert base64 LIME image to File and upload to Cloudinary
+          console.log("Uploading LIME visualization to Cloudinary...");
+          const limeImageFile = base64ToFile(limeData.explanation_image, 'lime-explanation.png');
+          const limeCloudinaryUrl = await uploadSingleFile(limeImageFile);
+          console.log("LIME Cloudinary URL:", limeCloudinaryUrl);
+          
+          // Prepare comprehensive notes array
+          const notes = [
+            `CNN Prediction: ${fastData.prediction.cnn_prediction} (${(fastData.prediction.cnn_confidence * 100).toFixed(1)}% confidence)`,
+            `Hybrid Prediction: ${fastData.prediction.hybrid_prediction} (${(fastData.prediction.hybrid_confidence * 100).toFixed(1)}% confidence)`,
+            `Total Positive Evidence: ${limeData.lime_statistics.total_positive_evidence.toFixed(4)}`,
+            `Total Negative Evidence: ${limeData.lime_statistics.total_negative_evidence.toFixed(4)}`,
+            `Net Evidence: ${limeData.lime_statistics.net_evidence.toFixed(4)}`,
+            ...limeData.lime_statistics.clinical_interpretation,
+          ];
+          
+          // Save to database with LIME data
+          await createScanRecord({
+            variables: {
+              user: userId,
+              result: [prediction],
+              notes: notes,
+              imageUrls: cloudinaryUrls,
+              limeVisualizationUrl: limeCloudinaryUrl,
+            },
+          });
+          
+          console.log("LIME explanation ready and saved!");
         } else {
           console.error("LIME generation failed:", limeResponse.status);
+          setGeneratingLime(false);
         }
-      } catch (error) {
-        console.error("Error generating LIME explanation:", error);
-        // Don't block the main flow if LIME fails
-      }
+      })
+      .catch((error) => {
+        console.error("Error generating LIME:", error);
+        setGeneratingLime(false);
+      });
 
     } catch (error) {
-      console.error("Error uploading image:", error);
+      console.error("Error during analysis:", error);
       setPredictionResult("Error: could not get prediction.");
+      setLoading(false);
+      setGeneratingLime(false);
     } 
   };
-  console.log("Prediction Result:", predictionResult);
 
   return (
     <>
@@ -708,18 +756,38 @@ const ScanPage = () => {
             />
           </div>
         )}
-        <h2 className="text-2xl font-bold text-white">Ready to check your Teeth's Health?</h2>
+        <div className="flex justify-between">
+          <h2 className="text-2xl font-bold text-white">Ready to check your Teeth's Health?</h2>
+          {/* Show loading state while generating LIME */}
+          {generatingLime && (
+            <div className="flex items-center gap-3 px-4 py-2 bg-blue-500/80 rounded-3xl">
+              <span className="text-white text-sm font-medium">
+                Please wait, Image Explanation Generating...
+              </span>
+            </div>
+          )}
+
+          {/* Show button when LIME is ready */}
+          {!generatingLime && limeExplanation && (
+            <button
+              onClick={() => setShowLimeExplanation(true)}
+              className="px-6 py-2 bg-blue-500 text-white rounded-3xl hover:bg-blue-600 transition"
+            >
+              🔍 View AI Explanation
+            </button>
+          )}
+        </div>     
         <p className="text-2xl text-white font-semibold mt-2">Scan Results</p>
         {predictionResult !== "" ? (
           isValid ? (
-            <div className="flex items-start gap-12 mt-4">
+            <div className="flex items-start gap-10 mt-4">
               {/* Prediction list on the left */}
               <div className="text-xl text-white">
-                <p className="mb-2 mr-10 font-semibold">Diseases Present:</p>
+                <p className="mb-2 font-semibold">Diseases Present:</p>
                 <ul className="list-disc list-inside">
                   {predictionResult ? (
                     <>
-                      <li className="font-semibold">{predictionResult}</li>
+                      <li className="font-semibold capitalize">{predictionResult}</li>
                       <li>Confidence: {confidenceLevel}</li>
                     </>
                   ) : (
@@ -741,15 +809,6 @@ const ScanPage = () => {
                 <p className="text-sm font-medium mb-2">Symptoms:</p>
                 <p className="text-sm">{symptomResponses}</p>
               </div>
-
-              {limeExplanation && (
-                <button
-                  onClick={() => setShowLimeExplanation(true)}
-                  className="px-6 py-2 bg-purple-600 text-white rounded-3xl hover:bg-purple-700 transition self-start mt-4"
-                >
-                  🔍 View AI Explanation
-                </button>
-              )}
             </div>
           ) : (
             <p className="mt-4 text-2xl text-white font-semibold">
@@ -938,14 +997,14 @@ const ScanPage = () => {
       {/* LIME Explanation Modal */}
       {showLimeExplanation && limeExplanation && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 flex items-center justify-center z-50 p-4 backdrop-blur-2xl bg-opacity-50"
           onClick={() => setShowLimeExplanation(false)}
         >
           <div 
-            className="bg-white rounded-3xl p-6 max-w-4xl max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-3xl p-6 max-w-6xl max-h-[95vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-2">
               <h3 className="text-2xl font-bold text-gray-800">
                 🔍 AI Explanation - LIME Analysis
               </h3>
@@ -957,7 +1016,7 @@ const ScanPage = () => {
               </button>
             </div>
 
-            <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+            <div className="mb-2 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-gray-700">
                 <strong>How to read:</strong>
               </p>

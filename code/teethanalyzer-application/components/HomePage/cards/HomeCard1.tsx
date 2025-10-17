@@ -40,8 +40,8 @@ const HomeCard1 = ({ className = "", metric = 100 }: { className?: string; metri
   type ScanRecord = {
     date: string;
     result: string[] | string;
-    notes: string;
-  };
+    notes: string[];
+  }; 
   
   const name = session?.user?.name || "User";
   const teethStatus = data?.getUserById?.teeth_status || "No Teeth Status Yet";
@@ -110,9 +110,17 @@ const HomeCard1 = ({ className = "", metric = 100 }: { className?: string; metri
                         day: "numeric",
                       })}
                     </p>
-                    <p className="text-sm mb-1">Result: {scanRecords.length > 0 ? scanRecords[scanRecords.length - 1].notes : "No Results yet"}</p>
+                    <p className="text-sm mb-1">
+                      Result:{" "}
+                      {scanRecords.length > 0
+                        ? scanRecords[scanRecords.length - 1].notes[0] === "Healthy teeth"
+                          ? "Healthy teeth"
+                          : "Has 1 disease"
+                        : "No results yet"}
+                    </p>
+
                     <p className="text-sm mb-1">Diseases Present:</p>
-                    <p className="text-sm mb-5">{displayResult}</p>
+                    <p className="text-sm mb-5 capitalize">{displayResult}</p>
                     <p className="text-sm font-medium mb-2">Actions to be taken:</p>
                     <p className="text-sm mb-1">{recommendedAction}</p>
                   </>
@@ -121,9 +129,7 @@ const HomeCard1 = ({ className = "", metric = 100 }: { className?: string; metri
                 )}
               </div>
             </div>
-          </div>
-
-          
+          </div> 
           <div className="w-80 h-55 bg-white/20 backdrop-blur-md rounded-3xl p-4 shadow-inner text-white mb-4 -mt-63">
             <p className="text-base font-medium mb-2">Teeth Scan History</p>
             
@@ -136,10 +142,12 @@ const HomeCard1 = ({ className = "", metric = 100 }: { className?: string; metri
                   })}
                 </p>
                 <p className="text-sm mb-1">
-                  Result: {scanRecords[0].notes}
+                  Result: {scanRecords[0].notes[0]?.toLowerCase().includes("healthy") 
+                    ? "Healthy teeth" 
+                    : "1 disease detected"}
                 </p>
                 <p className="text-sm mb-1">Diseases Present:</p>
-                <p className="text-sm mb-1">{Array.isArray(scanRecords[0]?.result) ? scanRecords[0].result.join(", ") : scanRecords[0]?.result}</p>
+                <p className="text-sm mb-1 capitalize">{Array.isArray(scanRecords[0]?.result) ? scanRecords[0].result.join(", ") : scanRecords[0]?.result}</p>
                 <div className="flex flex-col items-center">
                   <button 
                   className="mt-6 px-4 py-2 bg-white/30 text-white rounded-3xl hover:bg-[#608cc4]/40 transition-colors duration-200"
@@ -200,7 +208,13 @@ const HomeCard1 = ({ className = "", metric = 100 }: { className?: string; metri
                       day: "numeric",
                     })}
                   </p>
-                  <p className="text-sm mb-1">Result: {selectedRecord.notes || "No Notes"}</p>
+                  <p className="text-sm mb-1">
+                    Result: {selectedRecord?.notes?.[0] 
+                      ? (selectedRecord.notes[0].toLowerCase().includes("healthy") 
+                          ? "Healthy teeth" 
+                          : "1 disease detected")
+                      : "No Notes"}
+                  </p>
                   <p className="text-sm mb-1">Diseases Present:</p>
                   <p className="text-sm mb-1">
                     {Array.isArray(selectedRecord.result)

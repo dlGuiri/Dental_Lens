@@ -3,8 +3,9 @@ export default /* GraphQL */ `
     _id: ID!
     user: User!
     date: String
-    notes: String
+    notes: [String]
     imageUrls: [String]
+    limeVisualizationUrl: String
     result: [String]
     createdAt: String
     updatedAt: String

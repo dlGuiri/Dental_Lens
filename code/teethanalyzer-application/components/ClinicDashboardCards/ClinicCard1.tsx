@@ -3,7 +3,7 @@ interface ClinicCard1Props {
   dentistName: string;
   scheduledAppointments: number;
   appointmentsToday: number;
-  pendingReviews: number;
+  patientsNumber: number;
 }
 
 const ClinicCard1 = ({ 
@@ -11,7 +11,7 @@ const ClinicCard1 = ({
   dentistName = "Dr. Smith",
   scheduledAppointments = 1,
   appointmentsToday = 1,
-  pendingReviews = 1
+  patientsNumber = 1
 }: ClinicCard1Props) => {
   return (
     <div
@@ -37,8 +37,8 @@ const ClinicCard1 = ({
         
         {/* Pending Reviews Card */}
         <div className="bg-white/30 backdrop-blur-sm rounded-2xl p-6 text-center">
-          <h3 className="text-white text-sm font-medium mb-3">Pending Reviews</h3>
-          <p className="text-6xl font-bold text-white">{pendingReviews}</p>
+          <h3 className="text-white text-sm font-medium mb-3">Number of Patients</h3>
+          <p className="text-6xl font-bold text-white">{patientsNumber}</p>
         </div>
       </div>
     </div>

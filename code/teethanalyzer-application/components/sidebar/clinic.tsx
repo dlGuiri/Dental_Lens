@@ -22,7 +22,7 @@ const DashboardIcon = ({ isActive }: { isActive: boolean }) => (
 );
 
 const PatientsIcon = ({ isActive }: { isActive: boolean }) => (
-  <Link href="/clinic/chatpage">
+  <Link href="/clinic/patients">
     <div className={`p-3 rounded-lg transition-colors cursor-pointer ${
       isActive 
         ? 'bg-blue-100 text-blue-400' 
@@ -37,10 +37,10 @@ const PatientsIcon = ({ isActive }: { isActive: boolean }) => (
 );
 
 const AppointmentsIcon = ({ isActive }: { isActive: boolean }) => (
-  <Link href="/clinic/appointments">
+  <Link href="/clinic/chatpage">
     <div className={`p-3 rounded-lg transition-colors cursor-pointer ${
       isActive 
-        ? 'bg-blue-100 text-blue-600' 
+        ? 'bg-blue-100 text-blue-400' 
         : 'text-blue-400 hover:bg-blue-300 hover:text-white'
     }`}>
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

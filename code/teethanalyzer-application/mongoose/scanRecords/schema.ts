@@ -11,14 +11,19 @@ export const ScanRecordSchema = new Schema(
       type: Date,
       default: Date.now,
     },
-    notes: {
-      type: String,
-    },
+    notes: [
+      {
+        type: String,
+      }
+    ],
     imageUrls: [
       {
         type: String,
       },
     ],
+    limeVisualizationUrl: {
+      type: String,
+    },
     result: [
       {
         type: String,

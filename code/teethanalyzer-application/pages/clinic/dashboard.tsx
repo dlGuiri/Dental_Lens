@@ -28,6 +28,9 @@ interface DashboardProps {
 }
 
 const ClinicDashboard = ({ dentist }: DashboardProps) => {
+  const { data, loading, error } = useQuery(GET_USER_COUNT);
+  const userCount = data?.getUserCount ?? 0;
+
   // Sample activity data
   const recentActivities = [
     { id: '1', text: 'New appointment scheduled with John Doe' },
@@ -38,14 +41,14 @@ const ClinicDashboard = ({ dentist }: DashboardProps) => {
   ];
 
   return (
-    <div className="p-6">
-      <div className="grid grid-cols-1 gap-6">
+    <div className="p-2">
+      <div className="grid grid-cols-1 gap-4">
         {/* Welcome Header with Quick Stats */}
         <ClinicCard1 
           dentistName={dentist.name}
           scheduledAppointments={12}
           appointmentsToday={5}
-          pendingReviews={3}
+          patientsNumber={userCount}
         />
         
         {/* Recent Activity and Dental News */}

@@ -82,17 +82,6 @@ const ClinicPatients = () => {
         displayResult = String(displayResult ?? "No diseases detected");
     }
 
-    // Determine severity based on teeth_status or result
-    const getSeverity = () => {
-        if (!selectedPatient) return "N/A";
-        const teethStatus = selectedPatient.teeth_status?.toLowerCase() || "";
-        if (teethStatus.includes("severe")) return "Severe";
-        if (teethStatus.includes("moderate")) return "Moderate";
-        if (teethStatus.includes("mild")) return "Mild";
-        if (displayResult.toLowerCase() === "no diseases detected") return "Healthy";
-        return "Mildew"; // Default
-    };
-
     return (
         <main className="min-h-screen bg-[linear-gradient(45deg,_#6a8aff,_#b2fbff)]">
             <section className="flex justify-around items-center gap-26 ml-24">
@@ -104,14 +93,66 @@ const ClinicPatients = () => {
                         <div className="flex flex-col gap-2">
                             <p className="text-xl text-white text-shadow-sm">Name: {selectedPatient.name}</p>
                             <p className="text-xl text-white text-shadow-sm">
-                                Teeth Status: {selectedPatient.teeth_status || "No status available"}
+                                Teeth Status: {latestScan?.notes?.[0]?.toLowerCase().includes("healthy")
+                                    ? "Healthy teeth"
+                                    : latestScan?.notes?.[0]
+                                    ? "1 disease detected"
+                                    : "No status available"}
                             </p>
-                            <p className="text-xl text-white text-shadow-sm">
+                            <p className="text-xl text-white text-shadow-sm capitalize">
                                 Diseases Present: {displayResult}
                             </p>
-                            <p className="text-xl text-white text-shadow-sm">Probability: {latestScan.notes?.split(' ')[0] ?? "No notes"}</p>
+                            <p className="text-xl text-white text-shadow-sm">
+                                Probability: {(() => {
+                                    if (!Array.isArray(latestScan.notes) || latestScan.notes.length === 0) return "No data";
+                                    
+                                    // Check if healthy
+                                    if (latestScan.notes[0]?.toLowerCase().includes("healthy")) {
+                                    return "N/A";
+                                    }
+                                    
+                                    // Extract probability from notes[1] for disease cases
+                                    if (!latestScan.notes[1]) return "No data";
+                                    const match = latestScan.notes[1].match(/\(([0-9.]+)% confidence\)/);
+                                    return match ? `${match[1]}%` : "No data";
+                                })()}
+                            </p>
                             <p className="text-xl text-white text-shadow-sm mb-10">
-                                Severity: {getSeverity()}
+                            Positive Evidence: {
+                                (() => {
+                                const notes: string[] = latestScan.notes || [];
+                                if (notes.length === 0) return "No data";
+
+                                // Check if healthy
+                                if (notes[0]?.toLowerCase().includes("healthy")) {
+                                    return "N/A";
+                                }
+
+                                // Find positive and negative evidence lines
+                                const posLine = notes.find((note: string) =>
+                                    note.toLowerCase().includes("total positive evidence")
+                                );
+                                const negLine = notes.find((note: string) =>
+                                    note.toLowerCase().includes("total negative evidence")
+                                );
+
+                                if (!posLine || !negLine) return "No data";
+
+                                // Extract numbers
+                                const posMatch = posLine.match(/Total Positive Evidence:\s*([0-9.]+)/);
+                                const negMatch = negLine.match(/Total Negative Evidence:\s*(-?[0-9.]+)/);
+
+                                if (!posMatch || !negMatch) return "No data";
+
+                                const pos = parseFloat(posMatch[1]);
+                                const neg = parseFloat(negMatch[1]);
+
+                                // Calculate positive percentage
+                                const percentage = (pos / (pos + Math.abs(neg))) * 100;
+
+                                return `${percentage.toFixed(1)}%`;
+                                })()
+                            }
                             </p>
                         </div>
                     ) : (
@@ -231,10 +272,17 @@ const ClinicPatients = () => {
                                         day: "numeric",
                                     })}
                                 </h5>
-                                <p className="text-xl text-white mb-2">
-                                    <strong>Result:</strong> {selectedHistoryRecord.notes || "No notes"}
-                                </p>
-                                <p className="text-xl text-white">
+                                <div className="text-xl text-white mb-2">
+                                    <strong>Result:</strong>
+                                    <ul className="list-disc list-inside ml-4 mt-2">
+                                        {Array.isArray(selectedHistoryRecord.notes) 
+                                        ? selectedHistoryRecord.notes.map((note: string, idx: number) => (
+                                            <li key={idx} className="text-lg">{note}</li>
+                                            ))
+                                        : "No notes"}
+                                    </ul>
+                                </div>
+                                <p className="text-xl text-white capitalize">
                                     <strong>Diseases:</strong>{" "}
                                     {Array.isArray(selectedHistoryRecord.result)
                                         ? selectedHistoryRecord.result.join(", ")
