@@ -38,7 +38,6 @@
 # Large model files
 **/modeldentifycare.keras
 **/*.keras
-**/*.pth
 **/*.h5
 **/*.pkl
 **/*.joblib
