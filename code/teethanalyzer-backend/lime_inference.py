@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 DEVICE = torch.device('cpu')
 IMAGE_SIZE = (260, 260)
-MODEL_PATH = 'Dental Lens Model V4.pth'
+MODEL_PATH = 'dental_lens_model_v4.pth'
 HYBRID_MODELS_DIR = 'hybrid_models'
 
 class EfficientNetV2Classifier(nn.Module):
