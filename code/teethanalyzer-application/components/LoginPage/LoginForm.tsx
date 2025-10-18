@@ -134,35 +134,6 @@ export default function LoginForm() {
           <span>Signing in as {selectedRole}</span>
         </div>
 
-        {/* Email Sign In Form */}
-        <form onSubmit={handleEmailSignIn} className="space-y-3">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
-            required
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:border-[#4fa1f2] focus:outline-none text-sm"
-          />
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-[#4fa1f2] text-white rounded-full hover:bg-[#3a8bd9] transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FaEnvelope />
-            <span className="text-sm font-medium">
-              {isSubmitting ? "Sending..." : "Continue with Email"}
-            </span>
-          </button>
-        </form>
-
-        {/* Divider */}
-        <div className="flex items-center gap-2 text-gray-400 text-xs">
-          <hr className="flex-grow border-gray-300" />
-          <span>OR</span>
-          <hr className="flex-grow border-gray-300" />
-        </div>
-
         {/* GitHub Sign In */}
         <AuthButton 
           icon={<FaGithub />} 
