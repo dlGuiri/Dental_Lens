@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class_names = ['Calculus', 'Dental Caries', 'Gingivitis', 'Hypodontia', 'Mouth Ulcer', 'Tooth Discoloration']
-MODEL_PATH = "Dental_Lens_efficientnetv2.pth"
+MODEL_PATH = "dental_lens_model_v4.pth"
 
 # Set device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
