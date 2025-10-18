@@ -12,17 +12,23 @@ import taskTypeDefsCustom from "./tasks/custom.gql";
 import taskTypeDefsQueries from "./tasks/queries.gql";
 import taskTypeDefsMutations from "./tasks/mutations.gql";
 
+import chatTypeDefsCustom from "./chat/custom.gql";
+import chatTypeDefsQueries from "./chat/queries.gql";
+import chatTypeDefsMutations from "./chat/mutations.gql";
+
 export const typeDefs = gql`
   # Custom Types
   ${userTypeDefsCustom}
   ${scanRecordTypeDefsCustom}
   ${taskTypeDefsCustom}
+  ${chatTypeDefsCustom}
 
   # Root Query Type
   type Query {
     ${userTypeDefsQueries}
     ${scanRecordTypeDefsQueries}
     ${taskTypeDefsQueries}
+    ${chatTypeDefsQueries}
   }
 
   # Root Mutation Type
@@ -30,5 +36,6 @@ export const typeDefs = gql`
     ${userTypeDefsMutations}
     ${scanRecordTypeDefsMutations}
     ${taskTypeDefsMutations}
+    ${chatTypeDefsMutations}
   }
 `;

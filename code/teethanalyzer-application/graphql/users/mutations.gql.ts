@@ -1,7 +1,7 @@
 export default /* GraphQL */ `
     createUser(
-      name: String!
-      email: String!
+      name: String
+      email: String
       avatarUrl: String
       teeth_status: String
       role: Role

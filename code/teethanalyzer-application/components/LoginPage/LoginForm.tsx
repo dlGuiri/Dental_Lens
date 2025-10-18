@@ -102,12 +102,6 @@ export default function LoginForm() {
           <p className="text-sm text-gray-500">
             Click the link in the email to complete your sign in.
           </p>
-          <button
-            onClick={handleBackToRoleSelection}
-            className="text-[#4fa1f2] hover:text-[#3a8bd9] transition text-sm"
-          >
-            ← Back to login
-          </button>
         </div>
       </div>
     );
@@ -115,17 +109,11 @@ export default function LoginForm() {
 
   return (
     <div className="max-w-md w-full bg-white rounded-xl p-6 space-y-6 text-center">
-      <h1 className="text-3xl font-bold text-[#4fa1f2]">Welcome back!</h1>
-      <div className="flex items-center justify-between">
-        <button
-          onClick={handleBackToRoleSelection}
-          className="text-[#4fa1f2] hover:text-[#3a8bd9] transition text-sm"
-        >
-          ← Back
-        </button>
-        <h1 className="text-2xl font-bold text-[#4fa1f2]">
+      <div className="flex flex-col items-center justify-center">
+        <h1 className="text-3xl font-bold text-[#4fa1f2]">Welcome!</h1>
+        <h2 className="text-2xl font-bold text-[#4fa1f2]">
           {selectedRole === "dentist" ? "Dentist Login" : "Patient Login"}
-        </h1>
+        </h2>
         <div className="w-12"></div>
       </div>
       <div className="flex items-center gap-2 text-gray-400 text-sm">

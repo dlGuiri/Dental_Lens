@@ -1,48 +1,137 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Send, MoreVertical } from 'lucide-react';
 import Link from 'next/link';
+import { useSocket } from '@/hooks/useSocket';
+import { useQuery, useMutation, gql } from '@apollo/client';
 
-interface Contact {
-  id: string;
-  name: string;
-  lastMessage: string;
+const GET_USER_CONVERSATIONS = gql`
+  query GetUserConversations($userId: ID!) {
+    getUserConversations(userId: $userId) {
+      _id
+      participants {
+        _id
+        name
+        email
+      }
+      lastMessage {
+        _id
+        content
+        createdAt
+        sender {
+          _id
+          name
+        }
+      }
+      updatedAt
+    }
+  }
+`;
+
+const GET_MESSAGES = gql`
+  query GetMessages($conversationId: ID!) {
+    getMessages(conversationId: $conversationId) {
+      _id
+      content
+      sender {
+        _id
+        name
+      }
+      createdAt
+      isRead
+    }
+  }
+`;
+
+interface ClinicChatCardProps {
+  className?: string;
+  dentistId: string;
 }
 
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'other';
-  timestamp: string;
-}
-
-const ClinicChatCard = ({ className = "" }) => {
-  // Placeholder contacts
-  const contacts: Contact[] = [
-    { id: '1', name: 'Patient Name 1', lastMessage: 'Placeholder message text goes here...' },
-    { id: '2', name: 'Patient Name 2', lastMessage: 'Placeholder message text goes here...' },
-    { id: '3', name: 'Patient Name 3', lastMessage: 'Placeholder message text goes here...' },
-    { id: '4', name: 'Patient Name 4', lastMessage: 'Placeholder message text goes here...' },
-    { id: '5', name: 'Patient Name 5', lastMessage: 'Placeholder message text goes here...' },
-    { id: '6', name: 'Patient Name 6', lastMessage: 'Placeholder message text goes here...' }
-  ];
-
-  const [selectedContact, setSelectedContact] = useState<Contact>(contacts[1]); // Pre-select Patient Name 2
+const ClinicChatCard = ({ className = "", dentistId }: ClinicChatCardProps) => {
+  const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const [messageText, setMessageText] = useState('');
+  const [messages, setMessages] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Placeholder messages
-  const messages: Message[] = [
-    { id: '1', text: 'This is a placeholder message from the patient', sender: 'other', timestamp: '10:30 AM' },
-    { id: '2', text: 'This is a placeholder reply from the dentist', sender: 'user', timestamp: '10:32 AM' },
-    { id: '3', text: 'Another placeholder message from the patient', sender: 'other', timestamp: '10:35 AM' },
-    { id: '4', text: 'Another placeholder message from the patient', sender: 'other', timestamp: '10:36 AM' },
-    { id: '5', text: 'Another placeholder reply from the dentist', sender: 'user', timestamp: '10:38 AM' }
-  ];
+  const {
+    isConnected,
+    joinConversation,
+    sendMessage,
+    onNewMessage,
+    offNewMessage,
+  } = useSocket();
+
+  // Fetch user conversations
+  const { data: conversationsData, loading: conversationsLoading, refetch: refetchConversations } = useQuery(
+    GET_USER_CONVERSATIONS,
+    {
+      variables: { userId: dentistId },
+      skip: !dentistId,
+    }
+  );
+
+  // Fetch messages for selected conversation
+  const { data: messagesData, loading: messagesLoading, refetch: refetchMessages } = useQuery(
+    GET_MESSAGES,
+    {
+      variables: { conversationId: selectedConversation?._id },
+      skip: !selectedConversation,
+    }
+  );
+
+  // Update messages when data changes
+  useEffect(() => {
+    if (messagesData?.getMessages) {
+      setMessages(messagesData.getMessages);
+    }
+  }, [messagesData]);
+
+  // Join conversation room when selected
+  useEffect(() => {
+    if (selectedConversation?._id && isConnected) {
+      joinConversation(selectedConversation._id);
+    }
+  }, [selectedConversation, isConnected]);
+
+  // Listen for new messages
+  useEffect(() => {
+    onNewMessage((newMessage: any) => {
+      if (newMessage.conversation === selectedConversation?._id) {
+        setMessages((prev) => [...prev, newMessage]);
+        refetchConversations();
+      } else {
+        // Update conversation list for messages in other conversations
+        refetchConversations();
+      }
+    });
+
+    return () => {
+      offNewMessage();
+    };
+  }, [selectedConversation]);
+
+  // Auto scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSendMessage = () => {
-    if (messageText.trim()) {
-      // Placeholder for send functionality
+    if (messageText.trim() && selectedConversation && isConnected) {
+      sendMessage(selectedConversation._id, dentistId, messageText.trim());
       setMessageText('');
     }
+  };
+
+  // Filter conversations based on search
+  const filteredConversations = conversationsData?.getUserConversations?.filter((conv: any) => {
+    const otherParticipant = conv.participants.find((p: any) => p._id !== dentistId);
+    return otherParticipant?.name.toLowerCase().includes(searchQuery.toLowerCase());
+  }) || [];
+
+  // Get other participant for a conversation
+  const getOtherParticipant = (conversation: any) => {
+    return conversation.participants.find((p: any) => p._id !== dentistId);
   };
 
   return (
@@ -57,35 +146,61 @@ const ClinicChatCard = ({ className = "" }) => {
               <input
                 type="text"
                 placeholder="Search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-white/40 backdrop-blur-sm text-white placeholder-white/70 rounded-full focus:outline-none focus:ring-2 focus:ring-white/50"
               />
             </div>
           </div>
 
+          {/* Connection Status */}
+          <div className="px-4 pb-2">
+            <div className={`text-xs ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
+              {isConnected ? '● Connected' : '● Disconnected'}
+            </div>
+          </div>
+
           {/* Contacts List */}
           <div className="overflow-y-auto flex-1">
-            {contacts.map((contact) => (
-              <div
-                key={contact.id}
-                onClick={() => setSelectedContact(contact)}
-                className={`flex items-start gap-3 p-4 cursor-pointer transition-colors ${
-                  selectedContact?.id === contact.id 
-                    ? 'bg-white/50' 
-                    : 'hover:bg-white/20'
-                }`}
-              >
-                {/* Avatar */}
-                <div className="w-12 h-12 rounded-full bg-white/50 flex items-center justify-center flex-shrink-0">
-                  <div className="w-8 h-8 rounded-full bg-blue-300"></div>
-                </div>
-                
-                {/* Contact Info */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-white truncate">{contact.name}</h3>
-                  <p className="text-sm text-white/80 truncate">{contact.lastMessage}</p>
-                </div>
-              </div>
-            ))}
+            {conversationsLoading ? (
+              <div className="p-4 text-white text-center">Loading conversations...</div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-4 text-white text-center">No conversations yet</div>
+            ) : (
+              filteredConversations.map((conversation: any) => {
+                const otherParticipant = getOtherParticipant(conversation);
+                return (
+                  <div
+                    key={conversation._id}
+                    onClick={() => setSelectedConversation(conversation)}
+                    className={`flex items-start gap-3 p-4 cursor-pointer transition-colors ${
+                      selectedConversation?._id === conversation._id
+                        ? 'bg-white/50'
+                        : 'hover:bg-white/20'
+                    }`}
+                  >
+                    {/* Avatar */}
+                    <div className="w-12 h-12 rounded-full bg-white/50 flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-blue-300 flex items-center justify-center">
+                        <span className="text-white font-semibold">
+                          {otherParticipant?.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Contact Info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-white truncate">
+                        {otherParticipant?.name || 'Unknown'}
+                      </h3>
+                      <p className="text-sm text-white/80 truncate">
+                        {conversation.lastMessage?.content || 'No messages yet'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
 
           {/* Message Requests Button */}
@@ -103,82 +218,108 @@ const ClinicChatCard = ({ className = "" }) => {
 
         {/* Chat Area */}
         <div className="flex-1 flex flex-col bg-white/20 backdrop-blur-sm">
-          {/* Chat Header */}
-          <div className="p-4 bg-white/30 backdrop-blur-sm border-b border-white/20 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">{selectedContact.name}</h2>
-             {/* This is the 3-dot vertical button */}
-            <button className="p-2 hover:bg-white/20 rounded-full transition-colors">
-              <MoreVertical className="text-white" size={24} />
-            </button>
-          </div>
+          {selectedConversation ? (
+            <>
+              {/* Chat Header */}
+              <div className="p-4 bg-white/30 backdrop-blur-sm border-b border-white/20 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white">
+                  {getOtherParticipant(selectedConversation)?.name || 'Unknown'}
+                </h2>
+                <button className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                  <MoreVertical className="text-white" size={24} />
+                </button>
+              </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {message.sender === 'other' && (
-                  <div className="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center mr-2 flex-shrink-0">
-                    <div className="w-6 h-6 rounded-full bg-blue-300"></div>
-                  </div>
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {messagesLoading ? (
+                  <div className="text-white text-center">Loading messages...</div>
+                ) : (
+                  messages.map((message: any) => {
+                    const isOwnMessage = message.sender._id === dentistId;
+                    return (
+                      <div
+                        key={message._id}
+                        className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                      >
+                        {!isOwnMessage && (
+                          <div className="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center mr-2 flex-shrink-0">
+                            <div className="w-6 h-6 rounded-full bg-blue-300 flex items-center justify-center">
+                              <span className="text-white text-xs font-semibold">
+                                {message.sender.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        <div
+                          className={`max-w-md px-4 py-2 rounded-2xl ${
+                            isOwnMessage
+                              ? 'bg-white text-gray-800'
+                              : 'bg-white/90 text-gray-800'
+                          }`}
+                        >
+                          <p className="text-sm">{message.content}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(message.createdAt).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
-                <div
-                  className={`max-w-md px-4 py-2 rounded-2xl ${
-                    message.sender === 'user'
-                      ? 'bg-white text-gray-800'
-                      : 'bg-white/90 text-gray-800'
-                  }`}
-                >
-                  <p className="text-sm">{message.text}</p>
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Message Input */}
+              <div className="p-4 bg-white/30 backdrop-blur-sm border-t border-white/20">
+                <div className="flex gap-2 items-center">
+                  {/* Appointment Button */}
+                  <Link
+                    href={`/clinic/appointment?patientId=${getOtherParticipant(selectedConversation)?._id}&patientName=${getOtherParticipant(selectedConversation)?.name}`}
+                  >
+                    <button
+                      title="Set Appointment"
+                      className="p-3 bg-white/40 rounded-full hover:bg-white/60 transition-colors"
+                    >
+                      <svg
+                        className="w-6 h-6 text-blue-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </button>
+                  </Link>
+                  <input
+                    type="text"
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    placeholder="Your Message"
+                    disabled={!isConnected}
+                    className="flex-1 px-4 py-3 bg-white/40 backdrop-blur-sm text-gray-800 placeholder-gray-500 rounded-full focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-50"
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!isConnected || !messageText.trim()}
+                    className="p-3 bg-white/40 rounded-full hover:bg-white/60 transition-colors disabled:opacity-50"
+                  >
+                    <Send className="text-blue-500" size={24} />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* Message Input */}
-          <div className="p-4 bg-white/30 backdrop-blur-sm border-t border-white/20">
-  <div className="flex gap-2 items-center">
-    {/* Appointment Button */}
-    <Link
-      href={`/clinic/appointment?patientId=${selectedContact.id}&patientName=${selectedContact.name}`}
-    >
-      <button
-        title="Set Appointment"
-        className="p-3 bg-white/40 rounded-full hover:bg-white/60 transition-colors"
-      >
-        <svg
-          className="w-6 h-6 text-blue-600"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-          />
-        </svg>
-      </button>
-    </Link>
-              <input
-                type="text"
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder="Your Message"
-                className="flex-1 px-4 py-3 bg-white/40 backdrop-blur-sm text-gray-800 placeholder-gray-500 rounded-full focus:outline-none focus:ring-2 focus:ring-white/50"
-              />
-              <button
-                onClick={handleSendMessage}
-                className="p-3 bg-white/40 rounded-full hover:bg-white/60 transition-colors"
-              >
-                <Send className="text-blue-500" size={24} />
-              </button>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-white text-xl">
+              Select a conversation to start chatting
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -762,7 +762,7 @@ const ScanPage = () => {
           {generatingLime && (
             <div className="flex items-center gap-3 px-4 py-2 bg-blue-500/80 rounded-3xl">
               <span className="text-white text-sm font-medium">
-                Please wait, Image Explanation Generating...
+                Please wait for 30 seconds, Image Explanation Generating...
               </span>
             </div>
           )}

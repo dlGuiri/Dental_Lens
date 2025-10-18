@@ -1,8 +1,17 @@
-import { ApolloClient, InMemoryCache } from "@apollo/client";
+import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
+
+const httpLink = new HttpLink({
+  uri: '/api/graphql', // Your GraphQL endpoint
+});
 
 const client = new ApolloClient({
-  uri: "/api/graphql", // Next.js API route
+  link: httpLink,
   cache: new InMemoryCache(),
+  defaultOptions: {
+    watchQuery: {
+      fetchPolicy: 'cache-and-network',
+    },
+  },
 });
 
 export default client;

@@ -6,8 +6,8 @@ export default /* GraphQL */ `
 
   type User {
     _id: ID!
-    name: String!
-    email: String!
+    name: String
+    email: String
     avatarUrl: String
     role: Role!
     teeth_status: String
