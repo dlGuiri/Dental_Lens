@@ -6,6 +6,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { CldUploadButton } from 'next-cloudinary';
 import Swal from 'sweetalert2';
 import LoadingTeeth from "/public/assets/LoadingTeeth.gif";
+import { API_URL } from '@/config';
 
 const CREATE_SCAN_RECORD = gql`
   mutation CreateScanRecord(
@@ -400,7 +401,7 @@ const ScanPage = () => {
       ? JSON.stringify({ prompt, image: imageBase64 })
       : JSON.stringify({ prompt });
 
-    const response = await fetch("http://localhost:8000/chat-stream", {
+    const response = await fetch(`${API_URL}/chat-stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,
@@ -447,7 +448,7 @@ const ScanPage = () => {
       const formData = new FormData();
       formData.append('file', selectedFiles[0]); // Use first image
 
-      const response = await fetch('http://localhost:8000/predict-with-lime?num_samples=100', {
+      const response = await fetch(`${API_URL}/predict-with-lime?num_samples=100`, {
         method: 'POST',
         body: formData,
       });
@@ -615,7 +616,7 @@ const ScanPage = () => {
       const fastFormData = new FormData();
       fastFormData.append('file', selectedFiles[0]);
       
-      const fastResponse = await fetch('http://localhost:8000/predict-fast', {
+      const fastResponse = await fetch(`${API_URL}/predict-fast`, {
         method: 'POST',
         body: fastFormData,
       });
@@ -682,7 +683,7 @@ const ScanPage = () => {
       const limeFormData = new FormData();
       limeFormData.append('file', selectedFiles[0]);
       
-      fetch('http://localhost:8000/generate-lime?num_samples=100', {
+      fetch(`${API_URL}/generate-lime?num_samples=100`, {
         method: 'POST',
         body: limeFormData,
       })

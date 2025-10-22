@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 
 // Clinic-specific icons (you can create these or use simple divs for now)
+/*
 const DashboardIcon = ({ isActive }: { isActive: boolean }) => (
   <Link href="/clinic/dashboard">
     <div className={`p-3 rounded-lg transition-colors cursor-pointer ${
@@ -20,6 +21,7 @@ const DashboardIcon = ({ isActive }: { isActive: boolean }) => (
     </div>
   </Link>
 );
+*/
 
 const PatientsIcon = ({ isActive }: { isActive: boolean }) => (
   <Link href="/clinic/patients">
@@ -36,6 +38,7 @@ const PatientsIcon = ({ isActive }: { isActive: boolean }) => (
   </Link>
 );
 
+/*
 const AppointmentsIcon = ({ isActive }: { isActive: boolean }) => (
   <Link href="/clinic/chatpage">
     <div className={`p-3 rounded-lg transition-colors cursor-pointer ${
@@ -50,6 +53,7 @@ const AppointmentsIcon = ({ isActive }: { isActive: boolean }) => (
     </div>
   </Link>
 );
+
 
 const SettingsIcon = ({ isActive }: { isActive: boolean }) => (
   <Link href="/clinic/settings">
@@ -66,6 +70,7 @@ const SettingsIcon = ({ isActive }: { isActive: boolean }) => (
     </div>
   </Link>
 );
+*/
 
 const LogoutIcon = () => {
   const router = useRouter();
@@ -99,10 +104,10 @@ const ClinicSidebar = (): JSX.Element => {
                 <p className="text-blue-400 text-center mt-2 font-sans text-xs">Clinic</p>
             </div>
             <div className="mt-24 flex flex-col items-center space-y-6">
-                <DashboardIcon isActive={pathname === "/clinic/dashboard"} />
+                {/*<DashboardIcon isActive={pathname === "/clinic/dashboard"} />*/}
                 <PatientsIcon isActive={pathname === "/clinic/patients"} />
-                <AppointmentsIcon isActive={pathname === "/clinic/appointments"} />
-                <SettingsIcon isActive={pathname === "/clinic/settings"} />
+                {/*<AppointmentsIcon isActive={pathname === "/clinic/appointments"} />*/}
+                {/* <SettingsIcon isActive={pathname === "/clinic/settings"} /> */}         
                 
                 {/* Spacer */}
                 <div className="flex-1"></div>

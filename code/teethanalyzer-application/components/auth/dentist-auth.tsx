@@ -23,7 +23,7 @@ const DentistAuth = () => {
     if (password === DENTIST_PASSWORD) {
       // Set a simple session cookie for dentist
       document.cookie = 'dentist-session=authenticated; path=/; max-age=86400'; // 24 hours
-      router.push('/clinic/dashboard');
+      router.push('/clinic/patients');
     } else {
       setError('Invalid password. Please try again.');
       setIsLoading(false);
