@@ -502,140 +502,22 @@ const ScanPage = () => {
     }
   };
 
-  // Helper to resize image before sending to API
-  const resizeImage = (file: File, maxWidth = 768): Promise<string> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (e) => {
-        const img = new Image();
-        img.src = e.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ratio = maxWidth / img.width;
-          canvas.width = maxWidth;
-          canvas.height = img.height * ratio;
-          
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-          
-          // Convert to base64 with lower quality (0.7) to save tokens
-          resolve(canvas.toDataURL('image/jpeg', 0.7)); 
-        };
-      };
-    });
-  };
-
   // Submit Images
   const handleSubmit = async () => {
     if (selectedFiles.length === 0) return;
 
     // Reset ALL states at the beginning
     setPredictionResult("");
-    setIsValid(true); 
+    setIsValid(true);
     setSeverityResponses("");
     setCauseResponses("");
     setSymptomResponses("");
     setConfidenceLevel("");
     setLimeExplanation(null);
     setGeneratingLime(true);
-    
-    const formData = new FormData();
-    selectedFiles.forEach((file, index) => {
-      formData.append("files", file);
-    });
 
     try {
       setLoading(true);
-      
-      // Reset streaming responses
-      setSeverityResponses("");
-      setCauseResponses("");
-      setSymptomResponses("");
-
-      // IMPROVEMENT 1: Resize image to save tokens (90% reduction!)
-      const base64Image = await resizeImage(selectedFiles[0], 768);
-
-      // IMPROVEMENT 2 & 3: Combined validation + health check in ONE non-streaming call
-      console.log("Validating image with combined prompt...");
-      const validationResponse = await streamGeminiResponse(
-        `Analyze this image and respond ONLY with a JSON array in this exact format: ["valid", "healthy"]
-
-        Rules:
-        - First element: "yes" if image shows real human teeth/mouth/lips, "no" otherwise
-        - Second element: "yes" if teeth appear healthy, "no" if any disease/issues visible
-
-        Examples:
-        - Real teeth, healthy: ["yes", "yes"]
-        - Real teeth, diseased: ["yes", "no"]  
-        - Not teeth: ["no", "no"]
-
-        Respond with ONLY the JSON array, no explanation, no markdown, no backticks.`,
-        base64Image
-      );
-
-      let isValidTeethImage = false;
-      let isHealthy = true;
-
-      try {
-        // Clean up any potential markdown or extra text
-        const cleanResponse = validationResponse.trim().replace(/```json|```/g, '');
-        const responseArray = JSON.parse(cleanResponse);
-        isValidTeethImage = responseArray[0].toLowerCase().trim() === "yes";
-        isHealthy = responseArray[1].toLowerCase().trim() === "yes";
-        console.log("Validation result - Valid:", isValidTeethImage, "Healthy:", isHealthy);
-      } catch (error) {
-        console.error("Failed to parse validation response:", validationResponse, error);
-        // Fallback: assume invalid to be safe
-        setIsValid(false);
-        setPredictionResult("Unable to validate image. Please try again.");
-        setConfidenceLevel("");
-        setLoading(false);
-        setGeneratingLime(false);
-        return;
-      }
-      
-      if (!isValidTeethImage) {
-        setIsValid(false);
-        setPredictionResult("Invalid image: Please upload a clear image of actual teeth.");
-        setConfidenceLevel("");
-        setLoading(false);
-        setGeneratingLime(false);
-        return;
-      } else if (isHealthy) {
-        setIsValid(false);
-        setPredictionResult("No diseases detected");
-        setConfidenceLevel("");
-
-        // Upload image to Cloudinary even for healthy teeth
-        console.log("Uploading healthy teeth image to Cloudinary...");
-        const cloudinaryUrls = await uploadToCloudinary(selectedFiles);
-
-        // Save healthy result to database
-        await createScanRecord({
-          variables: {
-            user: userId,
-            result: ["No diseases detected"],
-            notes: ["Healthy teeth"],
-            imageUrls: cloudinaryUrls,
-            analysisDetails: {
-              cnnPrediction: "Healthy",
-              cnnConfidence: 1.0,
-              hybridPrediction: "Healthy",
-              hybridConfidence: 1.0,
-              totalPositiveEvidence: 0,
-              totalNegativeEvidence: 0,
-              netEvidence: 0,
-              clinicalInterpretation: ["No diseases detected", "Teeth appear healthy"],
-              allProbabilities: JSON.stringify({}),
-            },
-          },
-        });
-
-        setLoading(false);
-        setGeneratingLime(false);
-        return;
-      }
 
       // Upload images to Cloudinary
       console.log("Uploading to Cloudinary...");
@@ -646,130 +528,88 @@ const ScanPage = () => {
       console.log("Getting fast prediction...");
       const fastFormData = new FormData();
       fastFormData.append('file', selectedFiles[0]);
-      
+
       const fastResponse = await fetch(`${API_URL}/predict-fast`, {
         method: 'POST',
         body: fastFormData,
       });
-      
+
       if (!fastResponse.ok) {
         throw new Error("Fast prediction failed");
       }
 
       const fastData = await fastResponse.json();
-      
+
       // Extract prediction from fast response
       const prediction = fastData.prediction.hybrid_prediction;
       setPredictionResult(prediction);
       setConfidenceLevel(`${(fastData.prediction.hybrid_confidence * 100).toFixed(1)}%`);
-      
       console.log("Fast prediction received:", prediction);
 
-      // Stream Gemini responses immediately (while LIME generates in background)
-      const diseaseName = prediction.toLowerCase() === "calculus" ? "Dental Calculus" : prediction;
-
-      // const severityPromise = streamGeminiResponse(
-      //   `does this teeth have severe or mild ${prediction}? Just analyze the teeth in the image, don't consider other factors such as the teeth in the back that cannot be seen. Respond with a dash "-" followed by the severity assessment. Respond also in a straightforward manner. don't include sentences of doubt. After giving the severity level, put a period and give a description of the disease up to a maximum of 45 words`,
-      //   base64Image,
-      //   (chunk) => {
-      //     setSeverityResponses(prev => prev + chunk);
-      //   },
-      //   20, 
-      //   3
-      // );
-
-      // const causesPromise = streamGeminiResponse(
-      //   `what are the causes of ${diseaseName}? Respond in a straightforward manner. Limit response up to a maximum of 45 words.`,
-      //   undefined,
-      //   (chunk) => {
-      //     setCauseResponses(prev => prev + chunk);
-      //   },
-      //   20,
-      //   3
-      // );
-
-      // const symptomsPromise = streamGeminiResponse(
-      //   `what are the symptoms of ${diseaseName}? Respond in a straightforward manner. Limit response up to a maximum of 45 words.`,
-      //   undefined,
-      //   (chunk) => {
-      //     setSymptomResponses(prev => prev + chunk);
-      //   },
-      //   20,
-      //   3
-      // );
-
-      // setLoading(false);
-
-      // // Wait for Gemini streams
-      // await Promise.all([
-      //   severityPromise,
-      //   causesPromise,
-      //   symptomsPromise,
-      // ]);
+      setLoading(false);
 
       // ===== STEP 2: GENERATE LIME IN BACKGROUND =====
       console.log("Generating LIME explanation in background...");
       
-      // Start LIME generation (don't await - runs in background)
       const limeFormData = new FormData();
       limeFormData.append('file', selectedFiles[0]);
-      
+
       fetch(`${API_URL}/generate-lime?num_samples=100`, {
         method: 'POST',
         body: limeFormData,
       })
-      .then(async (limeResponse) => {
-        if (limeResponse.ok) {
-          const limeData = await limeResponse.json();
-          
-          // Store LIME visualization
-          setLimeExplanation(limeData.explanation_image);
+        .then(async (limeResponse) => {
+          if (limeResponse.ok) {
+            const limeData = await limeResponse.json();
+
+            // Store LIME visualization
+            setLimeExplanation(limeData.explanation_image);
+            setGeneratingLime(false);
+
+            // Convert base64 LIME image to File and upload to Cloudinary
+            console.log("Uploading LIME visualization to Cloudinary...");
+            const limeImageFile = base64ToFile(limeData.explanation_image, 'lime-explanation.png');
+            const limeCloudinaryUrl = await uploadSingleFile(limeImageFile);
+            console.log("LIME Cloudinary URL:", limeCloudinaryUrl);
+
+            // Prepare comprehensive notes array
+            const notes = [
+              `CNN Prediction: ${fastData.prediction.cnn_prediction} (${(fastData.prediction.cnn_confidence * 100).toFixed(1)}% confidence)`,
+              `Hybrid Prediction: ${fastData.prediction.hybrid_prediction} (${(fastData.prediction.hybrid_confidence * 100).toFixed(1)}% confidence)`,
+              `Total Positive Evidence: ${limeData.lime_statistics.total_positive_evidence.toFixed(4)}`,
+              `Total Negative Evidence: ${limeData.lime_statistics.total_negative_evidence.toFixed(4)}`,
+              `Net Evidence: ${limeData.lime_statistics.net_evidence.toFixed(4)}`,
+              ...limeData.lime_statistics.clinical_interpretation,
+            ];
+
+            // Save to database with LIME data
+            await createScanRecord({
+              variables: {
+                user: userId,
+                result: [prediction],
+                notes: notes,
+                imageUrls: cloudinaryUrls,
+                limeVisualizationUrl: limeCloudinaryUrl,
+              },
+            });
+
+            console.log("LIME explanation ready and saved!");
+          } else {
+            console.error("LIME generation failed:", limeResponse.status);
+            setGeneratingLime(false);
+          }
+        })
+        .catch((error) => {
+          console.error("Error generating LIME:", error);
           setGeneratingLime(false);
-          
-          // Convert base64 LIME image to File and upload to Cloudinary
-          console.log("Uploading LIME visualization to Cloudinary...");
-          const limeImageFile = base64ToFile(limeData.explanation_image, 'lime-explanation.png');
-          const limeCloudinaryUrl = await uploadSingleFile(limeImageFile);
-          console.log("LIME Cloudinary URL:", limeCloudinaryUrl);
-          
-          // Prepare comprehensive notes array
-          const notes = [
-            `CNN Prediction: ${fastData.prediction.cnn_prediction} (${(fastData.prediction.cnn_confidence * 100).toFixed(1)}% confidence)`,
-            `Hybrid Prediction: ${fastData.prediction.hybrid_prediction} (${(fastData.prediction.hybrid_confidence * 100).toFixed(1)}% confidence)`,
-            `Total Positive Evidence: ${limeData.lime_statistics.total_positive_evidence.toFixed(4)}`,
-            `Total Negative Evidence: ${limeData.lime_statistics.total_negative_evidence.toFixed(4)}`,
-            `Net Evidence: ${limeData.lime_statistics.net_evidence.toFixed(4)}`,
-            ...limeData.lime_statistics.clinical_interpretation,
-          ];
-          
-          // Save to database with LIME data
-          await createScanRecord({
-            variables: {
-              user: userId,
-              result: [prediction],
-              notes: notes,
-              imageUrls: cloudinaryUrls,
-              limeVisualizationUrl: limeCloudinaryUrl,
-            },
-          });
-          
-          console.log("LIME explanation ready and saved!");
-        } else {
-          console.error("LIME generation failed:", limeResponse.status);
-          setGeneratingLime(false);
-        }
-      })
-      .catch((error) => {
-        console.error("Error generating LIME:", error);
-        setGeneratingLime(false);
-      });
+        });
 
     } catch (error) {
       console.error("Error during analysis:", error);
       setPredictionResult("Error: could not get prediction.");
       setLoading(false);
       setGeneratingLime(false);
-    } 
+    }
   };
 
   return (
