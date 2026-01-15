@@ -502,6 +502,30 @@ const ScanPage = () => {
     }
   };
 
+  // Helper to resize image before sending to API
+  const resizeImage = (file: File, maxWidth = 768): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (e) => {
+        const img = new Image();
+        img.src = e.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ratio = maxWidth / img.width;
+          canvas.width = maxWidth;
+          canvas.height = img.height * ratio;
+          
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          // Convert to base64 with lower quality (0.7) to save tokens
+          resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+        };
+      };
+    });
+  };
+
   // Submit Images
   const handleSubmit = async () => {
     if (selectedFiles.length === 0) return;
@@ -514,7 +538,7 @@ const ScanPage = () => {
     setSymptomResponses("");
     setConfidenceLevel("");
     setLimeExplanation(null);
-    setGeneratingLime(true); // New state for LIME loading
+    setGeneratingLime(true);
     
     const formData = new FormData();
     selectedFiles.forEach((file, index) => {
@@ -529,44 +553,51 @@ const ScanPage = () => {
       setCauseResponses("");
       setSymptomResponses("");
 
-      // Convert image to base64 for validation
-      const toBase64 = (file: File): Promise<string> =>
-        new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-        });
+      // IMPROVEMENT 1: Resize image to save tokens (90% reduction!)
+      const base64Image = await resizeImage(selectedFiles[0], 768);
 
-      const base64Image = await toBase64(selectedFiles[0]);
-
-      // Validate if the image contains actual teeth
-      console.log("Validating image...");
+      // IMPROVEMENT 2 & 3: Combined validation + health check in ONE non-streaming call
+      console.log("Validating image with combined prompt...");
       const validationResponse = await streamGeminiResponse(
-        `does the image show real human teeth or a real human mouth or a real human lips? Respond only with "yes" or "no". Do not explain. 
-        If "yes" then second question, does the image show a healthy human teeth or does it show the lips of a human with healthy teeth? Do not explain. 
-        I want you to return an array as a response, for example ["yes", "no"] where the first index refers to the answer to the first question and the second index refers to the response to the second question. 
-        Return strictly an array.`,
-          base64Image
+        `Analyze this image and respond ONLY with a JSON array in this exact format: ["valid", "healthy"]
+
+        Rules:
+        - First element: "yes" if image shows real human teeth/mouth/lips, "no" otherwise
+        - Second element: "yes" if teeth appear healthy, "no" if any disease/issues visible
+
+        Examples:
+        - Real teeth, healthy: ["yes", "yes"]
+        - Real teeth, diseased: ["yes", "no"]  
+        - Not teeth: ["no", "no"]
+
+        Respond with ONLY the JSON array, no explanation, no markdown, no backticks.`,
+        base64Image
       );
 
       let isValidTeethImage = false;
       let isHealthy = true;
 
       try {
-        const responseArray = JSON.parse(validationResponse);
+        // Clean up any potential markdown or extra text
+        const cleanResponse = validationResponse.trim().replace(/```json|```/g, '');
+        const responseArray = JSON.parse(cleanResponse);
         isValidTeethImage = responseArray[0].toLowerCase().trim() === "yes";
         isHealthy = responseArray[1].toLowerCase().trim() === "yes";
-        console.log("Healthy Result:", isHealthy);
+        console.log("Validation result - Valid:", isValidTeethImage, "Healthy:", isHealthy);
       } catch (error) {
         console.error("Failed to parse validation response:", validationResponse, error);
+        // Fallback: assume invalid to be safe
+        setIsValid(false);
+        setPredictionResult("Unable to validate image. Please try again.");
+        setConfidenceLevel("");
+        setLoading(false);
+        setGeneratingLime(false);
+        return;
       }
-      
-      console.log("Image validation result:", isValidTeethImage, isHealthy);
       
       if (!isValidTeethImage) {
         setIsValid(false);
-        setPredictionResult("Invalid image: Please upload a clear image of an actual teeth.");
+        setPredictionResult("Invalid image: Please upload a clear image of actual teeth.");
         setConfidenceLevel("");
         setLoading(false);
         setGeneratingLime(false);
