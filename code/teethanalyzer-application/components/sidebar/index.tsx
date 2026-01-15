@@ -28,7 +28,7 @@ const Sidebar = (): JSX.Element => {
                 <br />
                 {/* <DentistIcon isActive={pathname === "/ChatPagePatient"} />
                 <br /> */}
-                <ChatbotIcon isActive={pathname === "/chatbot"} />
+                {/* <ChatbotIcon isActive={pathname === "/chatbot"} /> */}
                 <br />
                 <GoalsIcon isActive={pathname === "/calendar"} />
                 <SettingsIcon isActive={pathname === "/login"} />

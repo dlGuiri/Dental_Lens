@@ -637,44 +637,44 @@ const ScanPage = () => {
       // Stream Gemini responses immediately (while LIME generates in background)
       const diseaseName = prediction.toLowerCase() === "calculus" ? "Dental Calculus" : prediction;
 
-      const severityPromise = streamGeminiResponse(
-        `does this teeth have severe or mild ${prediction}? Just analyze the teeth in the image, don't consider other factors such as the teeth in the back that cannot be seen. Respond with a dash "-" followed by the severity assessment. Respond also in a straightforward manner. don't include sentences of doubt. After giving the severity level, put a period and give a description of the disease up to a maximum of 45 words`,
-        base64Image,
-        (chunk) => {
-          setSeverityResponses(prev => prev + chunk);
-        },
-        20, 
-        3
-      );
+      // const severityPromise = streamGeminiResponse(
+      //   `does this teeth have severe or mild ${prediction}? Just analyze the teeth in the image, don't consider other factors such as the teeth in the back that cannot be seen. Respond with a dash "-" followed by the severity assessment. Respond also in a straightforward manner. don't include sentences of doubt. After giving the severity level, put a period and give a description of the disease up to a maximum of 45 words`,
+      //   base64Image,
+      //   (chunk) => {
+      //     setSeverityResponses(prev => prev + chunk);
+      //   },
+      //   20, 
+      //   3
+      // );
 
-      const causesPromise = streamGeminiResponse(
-        `what are the causes of ${diseaseName}? Respond in a straightforward manner. Limit response up to a maximum of 45 words.`,
-        undefined,
-        (chunk) => {
-          setCauseResponses(prev => prev + chunk);
-        },
-        20,
-        3
-      );
+      // const causesPromise = streamGeminiResponse(
+      //   `what are the causes of ${diseaseName}? Respond in a straightforward manner. Limit response up to a maximum of 45 words.`,
+      //   undefined,
+      //   (chunk) => {
+      //     setCauseResponses(prev => prev + chunk);
+      //   },
+      //   20,
+      //   3
+      // );
 
-      const symptomsPromise = streamGeminiResponse(
-        `what are the symptoms of ${diseaseName}? Respond in a straightforward manner. Limit response up to a maximum of 45 words.`,
-        undefined,
-        (chunk) => {
-          setSymptomResponses(prev => prev + chunk);
-        },
-        20,
-        3
-      );
+      // const symptomsPromise = streamGeminiResponse(
+      //   `what are the symptoms of ${diseaseName}? Respond in a straightforward manner. Limit response up to a maximum of 45 words.`,
+      //   undefined,
+      //   (chunk) => {
+      //     setSymptomResponses(prev => prev + chunk);
+      //   },
+      //   20,
+      //   3
+      // );
 
-      setLoading(false);
+      // setLoading(false);
 
-      // Wait for Gemini streams
-      await Promise.all([
-        severityPromise,
-        causesPromise,
-        symptomsPromise,
-      ]);
+      // // Wait for Gemini streams
+      // await Promise.all([
+      //   severityPromise,
+      //   causesPromise,
+      //   symptomsPromise,
+      // ]);
 
       // ===== STEP 2: GENERATE LIME IN BACKGROUND =====
       console.log("Generating LIME explanation in background...");
