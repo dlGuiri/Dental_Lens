@@ -524,6 +524,51 @@ const ScanPage = () => {
       const cloudinaryUrls = await uploadToCloudinary(selectedFiles);
       console.log("Cloudinary URLs:", cloudinaryUrls);
 
+      // ===== STEP 0: AUTOENCODER VALIDATION =====
+      console.log("Validating image with autoencoder...");
+      const autoencoderFormData = new FormData();
+      autoencoderFormData.append('file', selectedFiles[0]);
+
+      const autoencoderResponse = await fetch(`${API_URL}/validate-autoencoder`, {
+        method: 'POST',
+        body: autoencoderFormData,
+      });
+
+      if (!autoencoderResponse.ok) {
+        throw new Error("Autoencoder validation failed");
+      }
+
+      const autoencoderData = await autoencoderResponse.json();
+      console.log("Autoencoder result:", autoencoderData);
+
+      // Check if image is valid (healthy teeth detected)
+      if (!autoencoderData.is_valid) {
+        setIsValid(false);
+        setPredictionResult("Healthy");
+        setConfidenceLevel(`${(autoencoderData.confidence * 100).toFixed(1)}%`);
+        setLoading(false);
+        setGeneratingLime(false);
+        
+        // Optionally save healthy classification to database
+        await createScanRecord({
+          variables: {
+            user: userId,
+            result: ["Healthy"],
+            notes: [
+              `Autoencoder Validation: Healthy teeth detected`,
+              `Reconstruction Error: ${autoencoderData.reconstruction_error?.toFixed(4) || 'N/A'}`,
+              `Confidence: ${(autoencoderData.confidence * 100).toFixed(1)}%`
+            ],
+            imageUrls: cloudinaryUrls,
+            limeVisualizationUrl: null,
+          },
+        });
+        
+        return; // Exit early - no need for hybrid model
+      }
+
+      console.log("Autoencoder validation passed - proceeding to disease classification");
+
       // ===== STEP 1: FAST PREDICTION (NO LIME) =====
       console.log("Getting fast prediction...");
       const fastFormData = new FormData();
@@ -574,6 +619,7 @@ const ScanPage = () => {
 
             // Prepare comprehensive notes array
             const notes = [
+              `Autoencoder Validation: Diseased teeth detected (passed validation)`,
               `CNN Prediction: ${fastData.prediction.cnn_prediction} (${(fastData.prediction.cnn_confidence * 100).toFixed(1)}% confidence)`,
               `Hybrid Prediction: ${fastData.prediction.hybrid_prediction} (${(fastData.prediction.hybrid_confidence * 100).toFixed(1)}% confidence)`,
               `Total Positive Evidence: ${limeData.lime_statistics.total_positive_evidence.toFixed(4)}`,
